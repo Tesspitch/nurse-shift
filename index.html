@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fff8fa">
+  <meta name="description" content="ตารางเวรและสรุปรายได้สำหรับพยาบาล">
+  <title>ตารางเวรและรายได้</title>
+  <link rel="stylesheet" href="/src/styles.css">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v9h-6v-6H9v6H3v-9Z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 3v3m8-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a1 1 0 0 1 1-1Z"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM7 15h3m7-6h.01"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21h-4v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3v-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.5V3h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-document" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.5 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.5a2 2 0 0 0-3.4 0Z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 3h6l1 4H8l1-4Zm-2 4 1 14h8l1-14M10 11v6m4-6v6"/></symbol>
+  </svg>
+
+  <div class="app-shell" id="app-shell" hidden>
+    <div class="texture texture-one"></div><div class="texture texture-two"></div>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow" id="screen-eyebrow">รอบปัจจุบัน</p>
+        <h1 id="screen-title">ภาพรวมของฉัน</h1>
+      </div>
+      <div class="profile" id="profile-badge" aria-label="ข้อมูลผู้ใช้"><span id="profile-initial">ผ</span></div>
+    </header>
+
+    <main class="screen-wrap">
+      <section class="screen is-active" data-screen="home">
+        <article class="summary-card">
+          <div class="summary-top"><span id="cycle-label">กำลังโหลดรอบ</span><span class="status-pill" id="summary-status">ประมาณการ</span></div>
+          <p class="summary-label">เงินสุทธิโดยประมาณ</p>
+          <h2 class="money" id="net-display">฿0–500</h2>
+          <p class="summary-help" id="net-help">ยอดนี้เป็นข้อมูลสรุปส่วนบุคคล</p>
+          <div class="summary-stats">
+            <div><span>ชั่วโมงทำงาน</span><b id="worked-hours">0 ชม.</b></div>
+            <div><span>OT รวม</span><b id="ot-hours">0 ชม.</b></div>
+          </div>
+        </article>
+
+        <section class="section-block">
+          <div class="section-heading"><div><p class="eyebrow">ทำรายการด่วน</p><h2>วันนี้ต้องทำอะไร</h2></div></div>
+          <div class="quick-grid">
+            <button class="quick-card" data-action="open-shift"><span class="icon-bubble"><svg><use href="#i-plus"/></svg></span><b>เพิ่มเวร</b><small>กรอกเวรปกติ</small></button>
+            <button class="quick-card" data-action="open-urgent"><span class="icon-bubble peach"><svg><use href="#i-clock"/></svg></span><b>OT เคสด่วน</b><small>ชั่วโมงหลังลงเวร</small></button>
+            <button class="quick-card" data-action="open-finance"><span class="icon-bubble lavender"><svg><use href="#i-wallet"/></svg></span><b>รายรับ/รายจ่าย</b><small>เพิ่มรายการเอง</small></button>
+          </div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-heading"><div><p class="eyebrow">กำลังจะถึง</p><h2>เวรถัดไป</h2></div><button class="text-button" data-go="calendar">ดูปฏิทิน</button></div>
+          <div id="next-shift"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-heading"><div><p class="eyebrow">ที่มาของยอด</p><h2>สรุปรายได้</h2></div><button class="text-button" data-go="finance">ดูทั้งหมด</button></div>
+          <div class="breakdown-list" id="home-breakdown"></div>
+        </section>
+      </section>
+
+      <section class="screen" data-screen="calendar">
+        <div class="calendar-toolbar">
+          <button class="icon-button" id="previous-month" aria-label="เดือนก่อน"><svg><use href="#i-left"/></svg></button>
+          <h2 id="calendar-title">เดือน</h2>
+          <button class="icon-button" id="next-month" aria-label="เดือนถัดไป"><svg><use href="#i-right"/></svg></button>
+        </div>
+        <div class="calendar-actions">
+          <p>แตะวันที่เพื่อเพิ่มเวร</p>
+          <button class="view-toggle" id="calendar-toggle" aria-pressed="false"><svg><use href="#i-calendar"/></svg><span>ขยาย</span></button>
+        </div>
+        <div class="calendar-card">
+          <div class="weekday-row"><span>อา.</span><span>จ.</span><span>อ.</span><span>พ.</span><span>พฤ.</span><span>ศ.</span><span>ส.</span></div>
+          <div class="calendar-grid" id="calendar-grid"></div>
+        </div>
+        <div class="legend" id="shift-legend"></div>
+        <section class="section-block">
+          <div class="section-heading"><div><p class="eyebrow">วันที่เลือก</p><h2 id="selected-date-title">รายการเวร</h2></div><button class="btn btn-small" data-action="open-selected-shift"><svg><use href="#i-plus"/></svg>เพิ่มเวร</button></div>
+          <div id="selected-shifts"></div>
+        </section>
+      </section>
+
+      <section class="screen" data-screen="finance">
+        <article class="finance-total">
+          <div><p class="eyebrow">ยอดสุทธิรอบนี้</p><h2 id="finance-net">฿0</h2><p id="finance-cycle">รอบ</p></div>
+          <svg><use href="#i-wallet"/></svg>
+        </article>
+        <section class="section-block">
+          <div class="section-heading"><div><p class="eyebrow">รายละเอียด</p><h2>รายได้และรายการหัก</h2></div><button class="btn btn-small" data-action="open-finance"><svg><use href="#i-plus"/></svg>เพิ่ม</button></div>
+          <div class="breakdown-list" id="finance-breakdown"></div>
+        </section>
+        <section class="section-block">
+          <div class="section-heading"><div><p class="eyebrow">รายการที่กรอกเอง</p><h2>รายรับและรายจ่าย</h2></div></div>
+          <div id="financial-items"></div>
+        </section>
+        <section class="confirm-card">
+          <label><input type="checkbox" id="confirm-cycle"><span><b>ข้อมูลรอบนี้ครบแล้ว</b><small>เมื่อยืนยัน ระบบจะแสดงยอดเดียวแทนช่วงประมาณการ</small></span></label>
+        </section>
+        <button class="btn btn-primary full" id="print-slip"><svg><use href="#i-document"/></svg>สร้างสลิป PDF</button>
+      </section>
+
+      <section class="screen" data-screen="settings">
+        <form class="settings-form" id="settings-form">
+          <section class="settings-card">
+            <div class="section-heading"><div><p class="eyebrow">รายได้หลัก</p><h2>อัตราคำนวณ</h2></div></div>
+            <div class="form-grid two">
+              <label class="field"><span>ฐานเงินเดือน</span><span class="input-affix"><input name="salary" inputmode="decimal" min="0" type="number"><b>บาท</b></span></label>
+              <label class="field"><span>ค่าใบประกอบ</span><span class="input-affix"><input name="licenseAllowance" inputmode="decimal" min="0" type="number"><b>บาท</b></span></label>
+              <label class="field"><span>อัตรา OT</span><span class="input-affix"><input name="otRate" inputmode="decimal" min="0" type="number"><b>บาท/ชม.</b></span></label>
+              <label class="field"><span>ชั่วโมงปกติ</span><span class="input-affix"><input name="standardHours" inputmode="numeric" min="1" type="number"><b>ชม.</b></span></label>
+              <label class="field"><span>วันเริ่มรอบ</span><span class="input-affix"><input name="cycleStartDay" inputmode="numeric" min="1" max="28" type="number"><b>ของเดือน</b></span></label>
+            </div>
+          </section>
+          <section class="settings-card">
+            <div class="section-heading"><div><p class="eyebrow">ประเภทเวร</p><h2>เวลาและค่าเพิ่ม</h2></div></div>
+            <div id="shift-type-settings"></div>
+          </section>
+          <section class="settings-card">
+            <div class="setting-toggle"><span class="icon-bubble"><svg><use href="#i-bell"/></svg></span><span><b>แจ้งเตือนผ่าน LINE</b><small>ระบบส่งก่อนเวลาตามที่กำหนด</small></span><label class="switch"><input type="checkbox" name="notificationsEnabled"><i></i></label></div>
+            <div class="reminder-list" id="reminder-settings"></div>
+          </section>
+          <button class="btn btn-primary full" type="submit">บันทึกการตั้งค่า</button>
+        </form>
+        <p class="mode-note" id="mode-note"></p>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="เมนูหลัก">
+      <button class="is-active" data-nav="home"><svg><use href="#i-home"/></svg><span>หน้าหลัก</span></button>
+      <button data-nav="calendar"><svg><use href="#i-calendar"/></svg><span>ตารางเวร</span></button>
+      <button data-nav="finance"><svg><use href="#i-wallet"/></svg><span>การเงิน</span></button>
+      <button data-nav="settings"><svg><use href="#i-settings"/></svg><span>ตั้งค่า</span></button>
+    </nav>
+  </div>
+
+  <div class="loading" id="loading"><span></span><p>กำลังเตรียมข้อมูลของคุณ</p></div>
+
+  <section class="onboarding" id="onboarding" hidden aria-labelledby="onboarding-title">
+    <div class="onboarding-card">
+      <div class="onboarding-mark"><svg><use href="#i-calendar"/></svg></div>
+      <p class="eyebrow">ตั้งค่าครั้งแรก</p>
+      <h1 id="onboarding-title">เริ่มจัดตารางเวรของคุณ</h1>
+      <p class="intro">กรอกข้อมูลที่ใช้คำนวณ คุณกลับมาแก้ไขได้ภายหลัง</p>
+      <form id="onboarding-form" class="form-stack">
+        <label class="field"><span>ฐานเงินเดือน</span><span class="input-affix"><input name="salary" type="number" min="0" required inputmode="decimal"><b>บาท</b></span></label>
+        <label class="field"><span>ค่าใบประกอบ</span><span class="input-affix"><input name="licenseAllowance" type="number" min="0" required inputmode="decimal"><b>บาท</b></span></label>
+        <label class="field"><span>อัตรา OT ต่อชั่วโมง</span><span class="input-affix"><input name="otRate" type="number" min="0" required inputmode="decimal"><b>บาท</b></span></label>
+        <div class="form-grid two">
+          <label class="field"><span>ชั่วโมงปกติ/รอบ</span><input name="standardHours" type="number" min="1" value="176" required inputmode="numeric"></label>
+          <label class="field"><span>วันเริ่มรอบ</span><input name="cycleStartDay" type="number" min="1" max="28" value="25" required inputmode="numeric"></label>
+        </div>
+        <div class="preset-note"><svg><use href="#i-check"/></svg><span>ตั้งต้นค่าเวรบ่าย 200 บาท และเวรดึก 300 บาท คุณแก้ไขได้ในหน้าตั้งค่า</span></div>
+        <button class="btn btn-primary full" type="submit">เริ่มใช้งาน</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="modal-backdrop" id="modal-backdrop" hidden></div>
+  <section class="bottom-sheet" id="shift-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="shift-sheet-title">
+    <div class="sheet-handle"></div>
+    <header class="sheet-head"><div><p class="eyebrow">เพิ่มข้อมูล</p><h2 id="shift-sheet-title">เพิ่มเวร</h2></div><button class="icon-button" data-close-sheet aria-label="ปิด"><svg><use href="#i-close"/></svg></button></header>
+    <form id="shift-form" class="form-stack">
+      <input type="hidden" name="id">
+      <label class="field"><span>วันที่</span><span class="input-affix date-input"><input name="workDate" type="text" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10" required><svg><use href="#i-calendar"/></svg></span><small>วัน/เดือน/ปี พ.ศ.</small></label>
+      <label class="field"><span>ประเภทเวร</span><select name="shiftTypeId" id="shift-type-select"></select></label>
+      <div class="form-grid two"><label class="field"><span>เริ่ม</span><input name="startTime" type="time" required></label><label class="field"><span>สิ้นสุด</span><input name="endTime" type="time" required></label></div>
+      <label class="field"><span>OT เคสด่วนเพิ่มเติม</span><span class="input-affix"><input name="urgentOtHours" type="number" min="0" step="1" value="0" inputmode="numeric"><b>ชม.</b></span></label>
+      <label class="field"><span>หมายเหตุ</span><input name="note" placeholder="ไม่บังคับ" maxlength="120"></label>
+      <div class="inline-warning" id="overlap-warning" hidden><svg><use href="#i-alert"/></svg><span><b>ตรวจพบเวลาซ้อน</b><small id="overlap-message">มีเวรอื่นในช่วงเวลาเดียวกัน คุณยังบันทึกต่อได้</small></span></div>
+      <button class="btn btn-primary full" type="submit">บันทึกเวร</button>
+    </form>
+  </section>
+
+  <section class="bottom-sheet" id="finance-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="finance-sheet-title">
+    <div class="sheet-handle"></div>
+    <header class="sheet-head"><div><p class="eyebrow">เพิ่มข้อมูล</p><h2 id="finance-sheet-title">รายรับหรือรายจ่าย</h2></div><button class="icon-button" data-close-sheet aria-label="ปิด"><svg><use href="#i-close"/></svg></button></header>
+    <form id="finance-form" class="form-stack">
+      <label class="field"><span>ประเภท</span><select name="kind"><option value="income">รายรับเพิ่ม</option><option value="deduction">รายการหัก</option></select></label>
+      <label class="field"><span>ชื่อรายการ</span><input name="label" placeholder="เช่น ภาษี หรือประกันสังคม" required maxlength="80"></label>
+      <label class="field"><span>จำนวนเงิน</span><span class="input-affix"><input name="amount" type="number" min="0" step="0.01" required inputmode="decimal"><b>บาท</b></span></label>
+      <label class="field"><span>วันที่ลงรายการ</span><span class="input-affix date-input"><input name="workDate" type="text" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10" required><svg><use href="#i-calendar"/></svg></span></label>
+      <button class="btn btn-primary full" type="submit">บันทึกรายการ</button>
+    </form>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <article class="print-slip" id="printable-slip">
+    <header><div><p>สรุปรายได้ส่วนบุคคล</p><h1>ตารางเวรและรายได้</h1></div><span id="slip-created"></span></header>
+    <div class="slip-person"><b id="slip-name"></b><span id="slip-cycle"></span></div>
+    <table><tbody id="slip-rows"></tbody><tfoot><tr><th>เงินสุทธิโดยประมาณ</th><td id="slip-net"></td></tr></tfoot></table>
+    <p class="slip-disclaimer">เอกสารนี้เป็นสรุปจากข้อมูลที่ผู้ใช้กรอก ไม่ใช่สลิปเงินเดือนหรือเอกสารรับรองจากนายจ้าง</p>
+  </article>
+
+  <script type="module" src="/src/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+-- Run after deploying send-reminders and saving secrets in Supabase Vault.
+-- Replace the three placeholder values in the Dashboard; never commit real secrets.
+
+select vault.create_secret('https://YOUR_PROJECT_REF.supabase.co', 'project_url');
+select vault.create_secret('YOUR_PUBLISHABLE_KEY', 'publishable_key');
+select vault.create_secret('YOUR_RANDOM_CRON_SECRET', 'reminder_cron_secret');
+
+select cron.schedule(
+  'send-nurse-shift-reminders',
+  '*/5 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/send-reminders',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'publishable_key'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'reminder_cron_secret')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);

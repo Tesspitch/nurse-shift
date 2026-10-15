@@ -1,0 +1,7 @@
+project_id = "wcfpubbeyihhukrsuing"
+
+[functions.app-api]
+verify_jwt = false
+
+[functions.send-reminders]
+verify_jwt = false

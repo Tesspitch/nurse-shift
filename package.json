@@ -1,0 +1,21 @@
+{
+  "name": "cost-nurse",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test",
+    "supabase:login": "supabase login",
+    "supabase:db:check": "supabase db push --dry-run",
+    "supabase:db:push": "supabase db push",
+    "supabase:function:api": "supabase functions deploy app-api",
+    "supabase:function:reminders": "supabase functions deploy send-reminders"
+  },
+  "devDependencies": {
+    "supabase": "^2.121.0",
+    "vite": "8.3.4"
+  }
+}

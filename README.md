@@ -1,0 +1,49 @@
+# ตารางเวรและรายได้สำหรับพยาบาล
+
+LIFF mobile web app สำหรับบันทึกเวร คำนวณรายได้โดยประมาณ แจ้งเตือนผ่าน LINE และพิมพ์สรุปส่วนบุคคลเป็น PDF ใช้ Vercel สำหรับ frontend และ Supabase สำหรับฐานข้อมูล/Edge Functions
+
+## ฟังก์ชันที่มีแล้ว
+
+- Onboarding: ฐานเงินเดือน ค่าใบประกอบ อัตรา OT ชั่วโมงปกติ และวันเริ่มรอบ
+- ปฏิทิน พ.ศ. พร้อมมุมมองย่อ/ขยายในปุ่มเดียว
+- แตะวันที่เพื่อเพิ่มเวร โดยกรอกวันที่รูปแบบ `dd/mm/yyyy` ให้อัตโนมัติ
+- เวรหลายรายการต่อวันและการแจ้งเตือนเมื่อเวลาซ้อน
+- ประเภทเวรแก้เวลาและค่าเพิ่มได้ ค่าเริ่มต้นเวรบ่าย 200 บาท เวรดึก 300 บาท
+- OT อัตโนมัติเมื่อเกินชั่วโมงปกติ และ OT เคสด่วนเป็นชั่วโมงเต็ม
+- รายรับ/รายการหักหลายรายการ เช่น ภาษีและประกันสังคม
+- ยอดประมาณการ ±500 บาท จนกว่าผู้ใช้จะยืนยันว่าข้อมูลครบ
+- หน้าสรุปสำหรับสั่ง Print / Save as PDF
+- Supabase schema, API Edge Function และ LINE reminder Edge Function
+- โหมด local-first สำหรับทดสอบ UI โดยยังไม่ต้องเชื่อมบัญชีจริง
+
+## เริ่มทดสอบในเครื่อง
+
+```bash
+copy .env.example .env.local
+npm install
+npm run dev
+```
+
+ค่าเริ่มต้น `VITE_MOCK_MODE=true` จะเก็บข้อมูลใน `localStorage` ของเบราว์เซอร์เท่านั้น
+
+## ตรวจสอบคุณภาพ
+
+```bash
+npm test
+npm run build
+```
+
+## เชื่อม LINE และ Supabase
+
+อ่าน [คู่มือตั้งค่าระบบ](docs/setup.md) แล้วเปลี่ยน `VITE_MOCK_MODE=false` หลัง deploy migration และ Edge Functions สำเร็จ
+
+## โครงสร้างสำคัญ
+
+- `src/` — frontend และสูตรคำนวณ
+- `supabase/migrations/` — schema และ access control
+- `supabase/functions/app-api/` — ตรวจ LINE ID token และอ่าน/บันทึกข้อมูล
+- `supabase/functions/send-reminders/` — ส่ง LINE push ตามเวลาที่ผู้ใช้เปิดไว้
+- `prototype/` — wireframe รุ่นที่ได้รับอนุมัติ เก็บไว้เป็น reference
+- `docs/ux-ui-plan.md` — specification ที่ตกลงร่วมกัน
+
+ระบบนี้เป็นเครื่องมือสรุปจากข้อมูลที่ผู้ใช้กรอก ไม่ใช่ระบบ payroll ของนายจ้าง และสลิปที่สร้างไม่ใช่เอกสารรับรองเงินเดือน
