@@ -103,7 +103,7 @@ function renderHome(payroll) {
     ? 'ยืนยันข้อมูลรอบนี้แล้ว'
     : `ช่วงประมาณการรวมค่าเผื่อ ±${numberFormat.format(state.settings.uncertaintyBuffer)} บาท`;
   $('#worked-hours').textContent = `${numberFormat.format(payroll.workedHours)} / ${numberFormat.format(state.settings.standardHours)} ชม.`;
-  $('#ot-hours').textContent = `${numberFormat.format(payroll.automaticOtHours + payroll.urgentOtHours)} ชม.`;
+  $('#ot-hours').textContent = `${numberFormat.format(payroll.automaticOtHours + payroll.specialOtHours)} ชม.`;
 
   const upcoming = state.shifts
     .filter((shift) => `${shift.workDate}T${shift.startTime}` >= `${todayIso}T00:00`)
@@ -117,7 +117,7 @@ function renderHome(payroll) {
     nextShift.innerHTML = `
       <div class="next-card">
         <div class="date-tile"><b>${date.getDate()}</b><span>${new Intl.DateTimeFormat('th-TH', { month: 'short' }).format(date)}</span></div>
-        <div class="content"><b>${escapeHtml(type?.name || 'เวร')}</b><span>${upcoming.startTime}–${upcoming.endTime} น.${upcoming.urgentOtHours ? ` · OT เพิ่ม ${upcoming.urgentOtHours} ชม.` : ''}</span></div>
+        <div class="content"><b>${escapeHtml(type?.name || 'เวร')}</b><span>${upcoming.startTime}–${upcoming.endTime} น.</span></div>
         <span class="premium-tag">+${numberFormat.format(type?.premium || 0)}</span>
       </div>`;
   }
@@ -130,7 +130,7 @@ function breakdownRows(payroll, includeTotal = true) {
     ['ฐานเงินเดือน', state.settings.salary],
     ['ค่าใบประกอบ', state.settings.licenseAllowance],
     [`ค่าเวร (${payroll.shifts.length} เวร)`, payroll.shiftPremium],
-    [`OT ${numberFormat.format(payroll.automaticOtHours + payroll.urgentOtHours)} ชม.`, payroll.otIncome],
+    [`OT ${numberFormat.format(payroll.automaticOtHours + payroll.specialOtHours)} ชม.`, payroll.otIncome],
     ['รายรับเพิ่มเติม', payroll.otherIncome],
     ['รายการหัก', -payroll.deductions, 'deduction']
   ];
@@ -150,27 +150,38 @@ function renderCalendar() {
     groups.get(shift.workDate).push(shift);
     return groups;
   }, new Map());
+  const specialOtByDate = state.specialOtItems.reduce((groups, item) => {
+    if (!groups.has(item.workDate)) groups.set(item.workDate, []);
+    groups.get(item.workDate).push(item);
+    return groups;
+  }, new Map());
   $('#calendar-grid').classList.toggle('is-expanded', calendarExpanded);
   $('#calendar-grid').innerHTML = calendarCells(calendarMonth).map((cell) => {
     const shifts = shiftsByDate.get(cell.iso) || [];
+    const specialOtItems = specialOtByDate.get(cell.iso) || [];
     const typeItems = shifts.map((shift) => state.shiftTypes.find((type) => type.id === shift.shiftTypeId)).filter(Boolean);
-    const labels = typeItems.map((type) => `<span style="--dot-color:${type.color}">${escapeHtml(type.name.replace('เวร', ''))}</span>`).join('');
-    const dots = typeItems.map((type) => `<i style="--dot-color:${type.color}"></i>`).join('');
+    const labels = `${typeItems.map((type) => `<span style="--dot-color:${type.color}">${escapeHtml(type.name.replace('เวร', ''))}</span>`).join('')}${specialOtItems.length ? '<span style="--dot-color:#DB2777">OT</span>' : ''}`;
+    const dots = `${typeItems.map((type) => `<i style="--dot-color:${type.color}"></i>`).join('')}${specialOtItems.length ? '<i style="--dot-color:#DB2777"></i>' : ''}`;
     const classes = [!cell.currentMonth && 'is-outside', cell.iso === todayIso && 'is-today', cell.iso === selectedDate && 'is-selected'].filter(Boolean).join(' ');
-    return `<button class="calendar-day ${classes}" data-date="${cell.iso}" aria-label="${formatThaiDate(cell.iso)}${typeItems.length ? ` มี ${typeItems.map((type) => type.name).join(' และ')}` : ''} แตะเพื่อเพิ่มเวร"><span class="day-number">${cell.day}</span><span class="day-dots">${dots}</span><span class="day-labels">${labels}</span></button>`;
+    return `<button class="calendar-day ${classes}" data-date="${cell.iso}" aria-label="${formatThaiDate(cell.iso)}${typeItems.length ? ` มี ${typeItems.map((type) => type.name).join(' และ')}` : ''}${specialOtItems.length ? ' มี OT พิเศษ' : ''} แตะเพื่อเพิ่มเวร"><span class="day-number">${cell.day}</span><span class="day-dots">${dots}</span><span class="day-labels">${labels}</span></button>`;
   }).join('');
 
-  $('#shift-legend').innerHTML = state.shiftTypes.map((type) => `<span><i style="--dot-color:${type.color}"></i>${escapeHtml(type.name)}</span>`).join('');
+  $('#shift-legend').innerHTML = `${state.shiftTypes.map((type) => `<span><i style="--dot-color:${type.color}"></i>${escapeHtml(type.name)}</span>`).join('')}<span><i style="--dot-color:#DB2777"></i>OT พิเศษ</span>`;
   $('#selected-date-title').textContent = formatThaiDate(selectedDate, true);
   const selectedShifts = (shiftsByDate.get(selectedDate) || []).sort((a, b) => a.startTime.localeCompare(b.startTime));
-  $('#selected-shifts').innerHTML = selectedShifts.length
-    ? `<div class="shift-list">${selectedShifts.map(shiftItemHtml).join('')}</div>`
+  const selectedSpecialOt = specialOtByDate.get(selectedDate) || [];
+  $('#selected-shifts').innerHTML = selectedShifts.length || selectedSpecialOt.length
+    ? `<div class="shift-list">${selectedShifts.map(shiftItemHtml).join('')}${selectedSpecialOt.map(specialOtItemHtml).join('')}</div>`
     : '<div class="empty-card"><b>วันนี้ยังไม่มีเวร</b><span>แตะวันที่หรือปุ่มเพิ่มเวรเพื่อบันทึก</span></div>';
 }
 
 function shiftItemHtml(shift) {
   const type = state.shiftTypes.find((item) => item.id === shift.shiftTypeId);
-  return `<article class="shift-item"><i class="shift-bar" style="--type-color:${type?.color || '#a3416a'}"></i><div class="content"><b>${escapeHtml(type?.name || 'เวร')}</b><span>${shift.startTime}–${shift.endTime} น. · ${plainMoney(type?.premium || 0)}${shift.urgentOtHours ? ` · OT เพิ่ม ${shift.urgentOtHours} ชม.` : ''}</span></div><button class="delete-button" data-delete-shift="${shift.id}" aria-label="ลบ ${escapeHtml(type?.name || 'เวร')}"><svg><use href="#i-trash"/></svg></button></article>`;
+  return `<article class="shift-item"><i class="shift-bar" style="--type-color:${type?.color || '#a3416a'}"></i><div class="content"><b>${escapeHtml(type?.name || 'เวร')}</b><span>${shift.startTime}–${shift.endTime} น. · ${plainMoney(type?.premium || 0)}</span></div><button class="delete-button" data-delete-shift="${shift.id}" aria-label="ลบ ${escapeHtml(type?.name || 'เวร')}"><svg><use href="#i-trash"/></svg></button></article>`;
+}
+
+function specialOtItemHtml(item) {
+  return `<article class="shift-item"><i class="shift-bar" style="--type-color:#DB2777"></i><div class="content"><b>OT พิเศษ ${numberFormat.format(item.hours)} ชม.</b><span>${escapeHtml(item.note || 'ไม่มีหมายเหตุ')}</span></div><button class="text-button" type="button" data-edit-special-ot="${item.id}">แก้ไข</button><button class="delete-button" type="button" data-delete-special-ot="${item.id}" aria-label="ลบ OT พิเศษ"><svg><use href="#i-trash"/></svg></button></article>`;
 }
 
 function renderFinance(payroll) {
@@ -181,6 +192,9 @@ function renderFinance(payroll) {
   $('#financial-items').innerHTML = payroll.items.length
     ? payroll.items.map((item) => `<article class="financial-item ${item.kind === 'deduction' ? 'is-deduction' : ''}"><div class="content"><b>${escapeHtml(item.label)}</b><span>${formatThaiDate(item.workDate)}</span></div><b class="amount">${item.kind === 'deduction' ? '−' : '+'}${money(item.amount)}</b><button class="delete-button" data-delete-item="${item.id}" aria-label="ลบ ${escapeHtml(item.label)}"><svg><use href="#i-trash"/></svg></button></article>`).join('')
     : '<div class="empty-card"><b>ยังไม่มีรายการเพิ่ม</b><span>เพิ่มภาษี ประกันสังคม รายรับ หรือรายจ่ายอื่นได้เอง</span></div>';
+  $('#special-ot-items').innerHTML = payroll.specialOtItems.length
+    ? `<div class="shift-list">${payroll.specialOtItems.map((item) => `<article class="shift-item"><i class="shift-bar" style="--type-color:#DB2777"></i><div class="content"><b>${formatThaiDate(item.workDate)} · ${numberFormat.format(item.hours)} ชม.</b><span>${escapeHtml(item.note || 'ไม่มีหมายเหตุ')}</span></div><button class="text-button" type="button" data-edit-special-ot="${item.id}">แก้ไข</button><button class="delete-button" type="button" data-delete-special-ot="${item.id}" aria-label="ลบ OT พิเศษ"><svg><use href="#i-trash"/></svg></button></article>`).join('')}</div>`
+    : '<div class="empty-card"><b>ยังไม่มี OT พิเศษ</b><span>เพิ่มชั่วโมงจากเหตุการณ์นอกเวรได้โดยไม่ต้องเลือกประเภทเวร</span></div>';
 }
 
 function renderSettings() {
@@ -233,7 +247,7 @@ function renderSlip(payroll) {
     ['ค่าใบประกอบ', state.settings.licenseAllowance],
     [`ค่าเวร ${payroll.shifts.length} เวร`, payroll.shiftPremium],
     [`OT อัตโนมัติ ${payroll.automaticOtHours} ชม.`, payroll.automaticOtHours * state.settings.otRate],
-    [`OT เคสด่วน ${payroll.urgentOtHours} ชม.`, payroll.urgentOtHours * state.settings.otRate],
+    [`OT พิเศษ ${payroll.specialOtHours} ชม.`, payroll.specialOtHours * state.settings.otRate],
     ['รายรับเพิ่มเติม', payroll.otherIncome],
     ['รายการหัก', -payroll.deductions]
   ].map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${value < 0 ? '−' : ''}${money(Math.abs(value))}</td></tr>`).join('');
@@ -386,18 +400,29 @@ function closeSheets() {
   document.body.style.overflow = '';
 }
 
-function openShiftSheet(date = selectedDate, urgent = false) {
+function openShiftSheet(date = selectedDate) {
   const form = $('#shift-form');
   form.reset();
   form.elements.id.value = '';
   form.elements.workDate.value = formatDateInput(date);
   $('#shift-native-date').value = date;
-  form.elements.urgentOtHours.value = urgent ? '1' : '0';
-  $('#shift-sheet-title').textContent = urgent ? 'เพิ่ม OT เคสด่วน' : 'เพิ่มเวร';
+  $('#shift-sheet-title').textContent = 'เพิ่มเวร';
   populateShiftTypeSelect();
   updateShiftTimes(form.elements.shiftTypeId.value);
   openSheet($('#shift-sheet'));
   updateOverlapWarning();
+}
+
+function openSpecialOtSheet(date = selectedDate, item = null) {
+  const form = $('#special-ot-form');
+  form.reset();
+  form.elements.id.value = item?.id || '';
+  form.elements.workDate.value = formatDateInput(item?.workDate || date || todayIso);
+  form.elements.hours.value = item?.hours || 1;
+  form.elements.note.value = item?.note || '';
+  $('#special-ot-native-date').value = item?.workDate || date || todayIso;
+  $('#special-ot-sheet-title').textContent = item ? 'แก้ไข OT พิเศษ' : 'เพิ่ม OT พิเศษ';
+  openSheet($('#special-ot-sheet'));
 }
 
 function openFinanceSheet() {
@@ -418,7 +443,7 @@ function shiftCandidateFromForm() {
     shiftTypeId: form.elements.shiftTypeId.value,
     startTime: form.elements.startTime.value,
     endTime: form.elements.endTime.value,
-    urgentOtHours: Math.floor(Number(form.elements.urgentOtHours.value || 0)),
+    urgentOtHours: 0,
     note: form.elements.note.value.trim()
   };
 }
@@ -445,7 +470,7 @@ function bindEvents() {
   $$('[data-settings-open]').forEach((button) => button.addEventListener('click', () => openSettingsSection(button.dataset.settingsOpen)));
   $('#settings-back').addEventListener('click', showSettingsMenu);
   $$('[data-action="open-shift"]').forEach((button) => button.addEventListener('click', () => openShiftSheet(todayIso)));
-  $$('[data-action="open-urgent"]').forEach((button) => button.addEventListener('click', () => openShiftSheet(todayIso, true)));
+  $$('[data-action="open-special-ot"]').forEach((button) => button.addEventListener('click', () => openSpecialOtSheet(selectedDate || todayIso)));
   $$('[data-action="open-finance"]').forEach((button) => button.addEventListener('click', openFinanceSheet));
   $$('[data-action="open-selected-shift"]').forEach((button) => button.addEventListener('click', () => openShiftSheet(selectedDate)));
   $$('[data-close-sheet]').forEach((button) => button.addEventListener('click', closeSheets));
@@ -464,14 +489,33 @@ function bindEvents() {
   });
 
   $('#selected-shifts').addEventListener('click', async (event) => {
-    const button = event.target.closest('[data-delete-shift]');
-    if (!button) return;
-    await commit(() => { state.shifts = state.shifts.filter((shift) => shift.id !== button.dataset.deleteShift); }, 'ลบเวรแล้ว');
+    const shiftButton = event.target.closest('[data-delete-shift]');
+    if (shiftButton) {
+      await commit(() => { state.shifts = state.shifts.filter((shift) => shift.id !== shiftButton.dataset.deleteShift); }, 'ลบเวรแล้ว');
+      return;
+    }
+    const editButton = event.target.closest('[data-edit-special-ot]');
+    if (editButton) {
+      openSpecialOtSheet(selectedDate, state.specialOtItems.find((item) => item.id === editButton.dataset.editSpecialOt));
+      return;
+    }
+    const deleteButton = event.target.closest('[data-delete-special-ot]');
+    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว');
   });
   $('#financial-items').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-delete-item]');
     if (!button) return;
     await commit(() => { state.financialItems = state.financialItems.filter((item) => item.id !== button.dataset.deleteItem); }, 'ลบรายการแล้ว');
+  });
+  $('#special-ot-items').addEventListener('click', async (event) => {
+    const editButton = event.target.closest('[data-edit-special-ot]');
+    if (editButton) {
+      const item = state.specialOtItems.find((entry) => entry.id === editButton.dataset.editSpecialOt);
+      if (item) openSpecialOtSheet(item.workDate, item);
+      return;
+    }
+    const deleteButton = event.target.closest('[data-delete-special-ot]');
+    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว');
   });
   $('#reminder-settings').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-delete-reminder]');
@@ -538,6 +582,14 @@ function bindEvents() {
   $('#finance-native-date').addEventListener('change', (event) => {
     if (event.target.value) $('#finance-form').elements.workDate.value = formatDateInput(event.target.value);
   });
+  $('#special-ot-form [name="workDate"]').addEventListener('input', (event) => {
+    event.target.value = maskDateInput(event.target.value);
+    const parsed = parseDateInput(event.target.value);
+    if (parsed) $('#special-ot-native-date').value = parsed;
+  });
+  $('#special-ot-native-date').addEventListener('change', (event) => {
+    if (event.target.value) $('#special-ot-form').elements.workDate.value = formatDateInput(event.target.value);
+  });
   $('#settings-form [name="notificationsEnabled"]').addEventListener('change', (event) => {
     $('#notification-options').disabled = !event.target.checked;
     $('#settings-notification-summary').textContent = event.target.checked ? `เปิด · ${state.reminders.filter((item) => item.enabled).length} เวลา` : 'ปิดใช้งาน';
@@ -550,15 +602,37 @@ function bindEvents() {
       showToast('กรุณากรอกวันที่ให้ถูกต้อง เช่น 18/10/2569');
       return;
     }
-    if (!Number.isInteger(shift.urgentOtHours) || shift.urgentOtHours < 0) {
-      showToast('OT เคสด่วนต้องเป็นจำนวนเต็มตั้งแต่ 0 ชั่วโมง');
-      return;
-    }
     shift.id = shift.id || crypto.randomUUID();
     const saved = await commit(() => { state.shifts.push(shift); }, 'บันทึกเวรแล้ว');
     if (saved) {
       selectedDate = shift.workDate;
       calendarMonth = new Date(fromIsoDate(selectedDate).getFullYear(), fromIsoDate(selectedDate).getMonth(), 1);
+      closeSheets();
+    }
+  });
+
+  $('#special-ot-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const workDate = parseDateInput(form.elements.workDate.value);
+    const hours = Number(form.elements.hours.value);
+    if (!workDate) {
+      showToast('กรุณากรอกวันที่ให้ถูกต้อง เช่น 18/10/2569');
+      return;
+    }
+    if (!Number.isInteger(hours) || hours < 1 || hours > 24) {
+      showToast('OT พิเศษต้องเป็นจำนวนเต็ม 1–24 ชั่วโมง');
+      return;
+    }
+    const item = { id: form.elements.id.value || crypto.randomUUID(), workDate, hours, note: form.elements.note.value.trim() };
+    const saved = await commit(() => {
+      const index = state.specialOtItems.findIndex((entry) => entry.id === item.id);
+      if (index >= 0) state.specialOtItems[index] = item;
+      else state.specialOtItems.push(item);
+    }, form.elements.id.value ? 'แก้ไข OT พิเศษแล้ว' : 'บันทึก OT พิเศษแล้ว');
+    if (saved) {
+      selectedDate = workDate;
+      calendarMonth = new Date(fromIsoDate(workDate).getFullYear(), fromIsoDate(workDate).getMonth(), 1);
       closeSheets();
     }
   });

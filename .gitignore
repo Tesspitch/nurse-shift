@@ -1,6 +1,8 @@
 node_modules/
 .npm-cache/
 dist/
+playwright-report/
+test-results/
 .env
 .env.local
 .DS_Store
@@ -12,3 +14,5 @@ supabase/functions/.env
 supabase/functions/.env.local
 
 .vercel
+
+prompt.md

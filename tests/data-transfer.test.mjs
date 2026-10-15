@@ -16,10 +16,27 @@ test('restores a backup without replacing the signed-in profile or state version
   current.profile = { displayName: 'Current user', pictureUrl: 'current.png' };
   const source = createInitialState();
   source.settings.salary = 25000;
+  source.specialOtItems.push({ id: crypto.randomUUID(), workDate: '2026-10-02', hours: 2, note: 'เคสด่วน' });
   const restored = restoreBackup(current, createBackup(source));
   assert.equal(restored.settings.salary, 25000);
   assert.equal(restored.version, 7);
   assert.deepEqual(restored.profile, current.profile);
+  assert.equal(restored.specialOtItems[0].hours, 2);
+});
+
+test('migrates legacy shift OT into independent special OT during restore', () => {
+  const current = createInitialState();
+  const legacy = createBackup(createInitialState());
+  legacy.formatVersion = 1;
+  delete legacy.data.specialOtItems;
+  legacy.data.shifts.push({
+    id: crypto.randomUUID(), shiftTypeId: 'morning', workDate: '2026-10-03',
+    startTime: '08:00', endTime: '16:00', urgentOtHours: 3, note: 'legacy'
+  });
+  const restored = restoreBackup(current, legacy);
+  assert.equal(restored.specialOtItems.length, 1);
+  assert.equal(restored.specialOtItems[0].hours, 3);
+  assert.equal(restored.shifts[0].urgentOtHours, 0);
 });
 
 test('creates a UTF-8 compatible CSV body and escapes commas', () => {

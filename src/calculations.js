@@ -23,19 +23,53 @@ export function findOverlaps(candidate, shifts) {
   return shifts.filter((shift) => shift.id !== candidate.id && shiftsOverlap(candidate, shift));
 }
 
+export function workedHoursWithoutOverlap(shifts) {
+  const ranges = shifts.map((shift) => {
+    const start = toBangkokDateTime(shift.workDate, shift.startTime);
+    const end = toBangkokDateTime(shift.workDate, shift.endTime);
+    if (end <= start) end.setUTCDate(end.getUTCDate() + 1);
+    return [start.getTime(), end.getTime()];
+  }).sort((a, b) => a[0] - b[0]);
+
+  let totalMinutes = 0;
+  let activeStart = null;
+  let activeEnd = null;
+  for (const [start, end] of ranges) {
+    if (activeStart === null) {
+      activeStart = start;
+      activeEnd = end;
+      continue;
+    }
+    if (start <= activeEnd) {
+      activeEnd = Math.max(activeEnd, end);
+      continue;
+    }
+    totalMinutes += (activeEnd - activeStart) / 60_000;
+    activeStart = start;
+    activeEnd = end;
+  }
+  if (activeStart !== null) totalMinutes += (activeEnd - activeStart) / 60_000;
+  return Math.floor(totalMinutes / 60);
+}
+
 export function calculatePayroll(state, anchorDate = new Date()) {
   const cycle = getCycleRange(anchorDate, state.settings.cycleStartDay);
   const shifts = state.shifts.filter((shift) => shift.workDate >= cycle.start && shift.workDate <= cycle.end);
+  const specialOtItems = Array.isArray(state.specialOtItems)
+    ? state.specialOtItems.filter((item) => item.workDate >= cycle.start && item.workDate <= cycle.end)
+    : shifts
+      .filter((shift) => Number(shift.urgentOtHours || 0) > 0)
+      .map((shift) => ({ workDate: shift.workDate, hours: Math.floor(Number(shift.urgentOtHours)), note: shift.note || '' }));
   const shiftTypes = new Map(state.shiftTypes.map((type) => [type.id, type]));
   const items = state.financialItems.filter((item) => item.workDate >= cycle.start && item.workDate <= cycle.end);
 
-  const workedHours = shifts.reduce((sum, shift) => sum + durationHours(shift.startTime, shift.endTime), 0);
+  const workedHours = workedHoursWithoutOverlap(shifts);
   const automaticOtHours = Math.max(0, workedHours - Number(state.settings.standardHours || 0));
-  const urgentOtHours = shifts.reduce((sum, shift) => sum + Math.floor(Number(shift.urgentOtHours || 0)), 0);
+  const specialOtHours = specialOtItems.reduce((sum, item) => sum + Math.floor(Number(item.hours || 0)), 0);
   const shiftPremium = shifts.reduce((sum, shift) => sum + Number(shiftTypes.get(shift.shiftTypeId)?.premium || 0), 0);
   const otherIncome = items.filter((item) => item.kind === 'income').reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const deductions = items.filter((item) => item.kind === 'deduction').reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const otIncome = (automaticOtHours + urgentOtHours) * Number(state.settings.otRate || 0);
+  const otIncome = (automaticOtHours + specialOtHours) * Number(state.settings.otRate || 0);
   const gross = Number(state.settings.salary || 0)
     + Number(state.settings.licenseAllowance || 0)
     + shiftPremium
@@ -47,10 +81,11 @@ export function calculatePayroll(state, anchorDate = new Date()) {
   return {
     cycle,
     shifts,
+    specialOtItems,
     items,
     workedHours,
     automaticOtHours,
-    urgentOtHours,
+    specialOtHours,
     shiftPremium,
     otherIncome,
     deductions,

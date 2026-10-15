@@ -59,7 +59,7 @@
           <div class="section-heading"><div><p class="eyebrow">ทำรายการด่วน</p><h2>วันนี้ต้องทำอะไร</h2></div></div>
           <div class="quick-grid">
             <button class="quick-card" data-action="open-shift"><span class="icon-bubble"><svg><use href="#i-plus"/></svg></span><b>เพิ่มเวร</b><small>กรอกเวรปกติ</small></button>
-            <button class="quick-card" data-action="open-urgent"><span class="icon-bubble peach"><svg><use href="#i-clock"/></svg></span><b>OT เคสด่วน</b><small>ชั่วโมงหลังลงเวร</small></button>
+            <button class="quick-card" data-action="open-special-ot"><span class="icon-bubble peach"><svg><use href="#i-clock"/></svg></span><b>OT พิเศษ</b><small>เพิ่มชั่วโมงและหมายเหตุ</small></button>
             <button class="quick-card" data-action="open-finance"><span class="icon-bubble lavender"><svg><use href="#i-wallet"/></svg></span><b>รายรับ/รายจ่าย</b><small>เพิ่มรายการเอง</small></button>
           </div>
         </section>
@@ -108,6 +108,10 @@
         <section class="section-block">
           <div class="section-heading"><div><p class="eyebrow">รายการที่กรอกเอง</p><h2>รายรับและรายจ่าย</h2></div></div>
           <div id="financial-items"></div>
+        </section>
+        <section class="section-block">
+          <div class="section-heading"><div><p class="eyebrow">นอกเวลา</p><h2>OT พิเศษ</h2></div><button class="btn btn-small" data-action="open-special-ot"><svg><use href="#i-plus"/></svg>เพิ่ม</button></div>
+          <div id="special-ot-items"></div>
         </section>
         <section class="confirm-card">
           <label><input type="checkbox" id="confirm-cycle"><span><b>ข้อมูลรอบนี้ครบแล้ว</b><small>เมื่อยืนยัน ระบบจะแสดงยอดเดียวแทนช่วงประมาณการ</small></span></label>
@@ -213,10 +217,22 @@
       <label class="field"><span>วันที่</span><span class="input-affix date-input"><input name="workDate" type="text" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10" required><input class="native-date-picker" id="shift-native-date" type="date" aria-label="เลือกวันที่จากปฏิทิน"><svg><use href="#i-calendar"/></svg></span><small>วัน/เดือน/ปี พ.ศ. หรือแตะไอคอนปฏิทิน</small></label>
       <label class="field"><span>ประเภทเวร</span><select name="shiftTypeId" id="shift-type-select"></select></label>
       <div class="form-grid two"><label class="field"><span>เริ่ม</span><input name="startTime" type="time" required></label><label class="field"><span>สิ้นสุด</span><input name="endTime" type="time" required></label></div>
-      <label class="field"><span>OT เคสด่วนเพิ่มเติม</span><span class="input-affix"><input name="urgentOtHours" type="number" min="0" step="1" value="0" inputmode="numeric"><b>ชม.</b></span></label>
       <label class="field"><span>หมายเหตุ</span><input name="note" placeholder="ไม่บังคับ" maxlength="120"></label>
       <div class="inline-warning" id="overlap-warning" hidden><svg><use href="#i-alert"/></svg><span><b>ตรวจพบเวลาซ้อน</b><small id="overlap-message">มีเวรอื่นในช่วงเวลาเดียวกัน คุณยังบันทึกต่อได้</small></span></div>
       <button class="btn btn-primary full" type="submit">บันทึกเวร</button>
+    </form>
+  </section>
+
+  <section class="bottom-sheet" id="special-ot-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="special-ot-sheet-title">
+    <div class="sheet-handle"></div>
+    <header class="sheet-head"><div><p class="eyebrow">นอกเวลา</p><h2 id="special-ot-sheet-title">เพิ่ม OT พิเศษ</h2></div><button class="icon-button" data-close-sheet aria-label="ปิด"><svg><use href="#i-close"/></svg></button></header>
+    <form id="special-ot-form" class="form-stack">
+      <input type="hidden" name="id">
+      <label class="field"><span>วันที่</span><span class="input-affix date-input"><input name="workDate" type="text" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10" required><input class="native-date-picker" id="special-ot-native-date" type="date" aria-label="เลือกวันที่ OT พิเศษจากปฏิทิน"><svg><use href="#i-calendar"/></svg></span><small>วัน/เดือน/ปี พ.ศ. หรือแตะไอคอนปฏิทิน</small></label>
+      <label class="field"><span>จำนวนชั่วโมงเพิ่ม</span><span class="input-affix"><input name="hours" type="number" min="1" max="24" step="1" value="1" required inputmode="numeric"><b>ชม.</b></span></label>
+      <label class="field"><span>หมายเหตุ</span><input name="note" placeholder="เช่น เคสด่วนหลังลงเวร" maxlength="120"></label>
+      <p class="privacy-note">OT พิเศษนับเป็น OT ทันที และไม่เพิ่มในชั่วโมงเวรปกติ</p>
+      <button class="btn btn-primary full" type="submit">บันทึก OT พิเศษ</button>
     </form>
   </section>
 

@@ -16,6 +16,21 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function upgradeLegacyState(state) {
+  if (!Array.isArray(state.specialOtItems)) {
+    state.specialOtItems = (state.shifts || [])
+      .filter((shift) => Number(shift.urgentOtHours || 0) > 0)
+      .map((shift) => ({
+        id: crypto.randomUUID(),
+        workDate: shift.workDate,
+        hours: Math.floor(Number(shift.urgentOtHours)),
+        note: shift.note || ''
+      }));
+  }
+  state.shifts = (state.shifts || []).map((shift) => ({ ...shift, urgentOtHours: 0 }));
+  return state;
+}
+
 class LocalService {
   constructor(profile = null) {
     this.profile = profile;
@@ -23,7 +38,7 @@ class LocalService {
 
   async bootstrap() {
     const saved = localStorage.getItem(STORAGE_KEY);
-    const state = saved ? JSON.parse(saved) : createInitialState();
+    const state = upgradeLegacyState(saved ? JSON.parse(saved) : createInitialState());
     state.version = Number(state.version || 0);
     if (this.profile) state.profile = this.profile;
     this.persist(state);

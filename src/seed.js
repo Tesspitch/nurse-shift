@@ -19,6 +19,7 @@ export function createInitialState() {
       { id: 'night', name: 'เวรดึก', startTime: '00:00', endTime: '08:00', premium: 300, color: '#3559A8' }
     ],
     shifts: [],
+    specialOtItems: [],
     financialItems: [],
     reminders: [
       { id: 'one-day', offsetMinutes: 1440, enabled: true },

@@ -23,7 +23,7 @@ const supabase = createClient(
 const validationCodes = new Set([
   'INVALID_STATE', 'INVALID_SETTINGS', 'INVALID_STANDARD_HOURS', 'INVALID_CYCLE_START_DAY',
   'INVALID_COLLECTIONS', 'SHIFT_TYPES_REQUIRED', 'INVALID_SHIFT_TYPE', 'INVALID_SHIFT',
-  'INVALID_FINANCIAL_ITEM', 'INVALID_REMINDER', 'DUPLICATE_ID', 'PAYLOAD_TOO_LARGE'
+  'INVALID_SPECIAL_OT_ITEM', 'INVALID_FINANCIAL_ITEM', 'INVALID_REMINDER', 'DUPLICATE_ID', 'PAYLOAD_TOO_LARGE'
 ]);
 
 function requestOrigin(request: Request) {
@@ -98,16 +98,27 @@ async function ensureProfile(lineUser: VerifiedLineUser) {
 }
 
 async function getState(profile: { id: string; display_name: string; picture_url: string | null }) {
-  const [settingsResult, typesResult, shiftsResult, itemsResult, remindersResult] = await Promise.all([
+  const [settingsResult, typesResult, shiftsResult, specialOtResult, itemsResult, remindersResult] = await Promise.all([
     supabase.from('user_settings').select('*').eq('user_id', profile.id).single(),
     supabase.from('shift_types').select('*').eq('user_id', profile.id).order('sort_order'),
     supabase.from('shifts').select('*').eq('user_id', profile.id).order('work_date').order('start_time'),
+    supabase.from('special_ot_items').select('*').eq('user_id', profile.id).order('work_date'),
     supabase.from('financial_items').select('*').eq('user_id', profile.id).order('work_date'),
     supabase.from('reminders').select('*').eq('user_id', profile.id).order('offset_minutes', { ascending: false })
   ]);
-  const error = settingsResult.error || typesResult.error || shiftsResult.error || itemsResult.error || remindersResult.error;
+  const error = settingsResult.error || typesResult.error || shiftsResult.error || specialOtResult.error || itemsResult.error || remindersResult.error;
   if (error) throw error;
   const settings = settingsResult.data;
+  const shiftsById = new Map(shiftsResult.data.map((shift) => [shift.id, shift]));
+  const specialOtItems = specialOtResult.data.map((item) => {
+    const legacyShift = item.origin_shift_id ? shiftsById.get(item.origin_shift_id) : null;
+    return {
+      id: item.id,
+      workDate: item.work_date,
+      hours: legacyShift && legacyShift.urgent_ot_hours > 0 ? legacyShift.urgent_ot_hours : item.hours,
+      note: item.note || ''
+    };
+  });
   return {
     version: Number(settings.state_version || 0),
     profile: { displayName: profile.display_name, pictureUrl: profile.picture_url || '' },
@@ -123,7 +134,8 @@ async function getState(profile: { id: string; display_name: string; picture_url
       notificationsEnabled: settings.notifications_enabled
     },
     shiftTypes: typesResult.data.map((type) => ({ id: type.id, name: type.name, startTime: type.start_time.slice(0, 5), endTime: type.end_time.slice(0, 5), premium: Number(type.premium), color: type.color })),
-    shifts: shiftsResult.data.map((shift) => ({ id: shift.id, shiftTypeId: shift.shift_type_id, workDate: shift.work_date, startTime: shift.start_time.slice(0, 5), endTime: shift.end_time.slice(0, 5), urgentOtHours: shift.urgent_ot_hours, note: shift.note || '' })),
+    shifts: shiftsResult.data.map((shift) => ({ id: shift.id, shiftTypeId: shift.shift_type_id, workDate: shift.work_date, startTime: shift.start_time.slice(0, 5), endTime: shift.end_time.slice(0, 5), urgentOtHours: 0, note: shift.note || '' })),
+    specialOtItems,
     financialItems: itemsResult.data.map((item) => ({ id: item.id, kind: item.kind, label: item.label, amount: Number(item.amount), workDate: item.work_date })),
     reminders: remindersResult.data.map((reminder) => ({ id: reminder.id, offsetMinutes: reminder.offset_minutes, enabled: reminder.enabled }))
   };
@@ -161,12 +173,13 @@ function validateState(state: Record<string, unknown>) {
 
   const shiftTypes = state.shiftTypes as Array<Record<string, unknown>>;
   const shifts = state.shifts as Array<Record<string, unknown>>;
+  const specialOtItems = state.specialOtItems as Array<Record<string, unknown>>;
   const items = state.financialItems as Array<Record<string, unknown>>;
   const reminders = state.reminders as Array<Record<string, unknown>>;
-  if (![shiftTypes, shifts, items, reminders].every(Array.isArray)) throw new Error('INVALID_COLLECTIONS');
+  if (![shiftTypes, shifts, specialOtItems, items, reminders].every(Array.isArray)) throw new Error('INVALID_COLLECTIONS');
   if (shiftTypes.length < 1 || shiftTypes.length > 20) throw new Error('SHIFT_TYPES_REQUIRED');
-  if (shifts.length > 5000 || items.length > 5000 || reminders.length > 20) throw new Error('PAYLOAD_TOO_LARGE');
-  assertUniqueIds(shiftTypes); assertUniqueIds(shifts); assertUniqueIds(items); assertUniqueIds(reminders);
+  if (shifts.length > 5000 || specialOtItems.length > 5000 || items.length > 5000 || reminders.length > 20) throw new Error('PAYLOAD_TOO_LARGE');
+  assertUniqueIds(shiftTypes); assertUniqueIds(shifts); assertUniqueIds(specialOtItems); assertUniqueIds(items); assertUniqueIds(reminders);
 
   const typeIds = new Set<string>();
   for (const type of shiftTypes) {
@@ -183,6 +196,12 @@ function validateState(state: Record<string, unknown>) {
       || !isDate(shift.workDate) || !isTime(shift.startTime) || !isTime(shift.endTime)
       || !Number.isInteger(Number(shift.urgentOtHours)) || !isFiniteNumber(shift.urgentOtHours, 0, 24)
       || typeof shift.note !== 'string' || shift.note.length > 120) throw new Error('INVALID_SHIFT');
+  }
+  for (const item of specialOtItems) {
+    if (typeof item.id !== 'string' || !/^[0-9a-fA-F-]{36}$/.test(item.id)
+      || !isDate(item.workDate) || !Number.isInteger(Number(item.hours))
+      || !isFiniteNumber(item.hours, 1, 24)
+      || typeof item.note !== 'string' || item.note.length > 120) throw new Error('INVALID_SPECIAL_OT_ITEM');
   }
   for (const item of items) {
     if (typeof item.id !== 'string' || !/^[0-9a-fA-F-]{36}$/.test(item.id)
