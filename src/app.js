@@ -154,7 +154,7 @@ function renderCalendar() {
     groups.get(shift.workDate).push(shift);
     return groups;
   }, new Map());
-  const specialOtByDate = state.specialOtItems.reduce((groups, item) => {
+  const specialOtByDate = (state.specialOtItems || []).reduce((groups, item) => {
     if (!groups.has(item.workDate)) groups.set(item.workDate, []);
     groups.get(item.workDate).push(item);
     return groups;

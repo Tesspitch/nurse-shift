@@ -16,9 +16,11 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function upgradeLegacyState(state) {
+export function normalizeState(state) {
+  if (!state || typeof state !== 'object') throw new ApiError('ข้อมูลจากระบบไม่ถูกต้อง กรุณาลองเปิดใหม่', 'INVALID_REMOTE_STATE');
+  if (!Array.isArray(state.shifts)) state.shifts = [];
   if (!Array.isArray(state.specialOtItems)) {
-    state.specialOtItems = (state.shifts || [])
+    state.specialOtItems = state.shifts
       .filter((shift) => Number(shift.urgentOtHours || 0) > 0)
       .map((shift) => ({
         id: crypto.randomUUID(),
@@ -27,10 +29,12 @@ function upgradeLegacyState(state) {
         note: shift.note || ''
       }));
   }
-  state.shifts = (state.shifts || []).map((shift) => ({ ...shift, urgentOtHours: 0 }));
+  state.shifts = state.shifts.map((shift) => ({ ...shift, urgentOtHours: 0 }));
   if (!Array.isArray(state.dayOffs)) state.dayOffs = [];
   const palette = { '#B7791F': '#F59E0B', '#9B285B': '#8B5CF6', '#3559A8': '#2563EB' };
   state.shiftTypes = (state.shiftTypes || []).map((type) => ({ ...type, color: palette[type.color] || type.color }));
+  if (!Array.isArray(state.financialItems)) state.financialItems = [];
+  if (!Array.isArray(state.reminders)) state.reminders = [];
   return state;
 }
 
@@ -41,7 +45,7 @@ class LocalService {
 
   async bootstrap() {
     const saved = localStorage.getItem(STORAGE_KEY);
-    const state = upgradeLegacyState(saved ? JSON.parse(saved) : createInitialState());
+    const state = normalizeState(saved ? JSON.parse(saved) : createInitialState());
     state.version = Number(state.version || 0);
     if (this.profile) state.profile = this.profile;
     this.persist(state);
@@ -113,11 +117,11 @@ class RemoteService {
   }
 
   bootstrap() {
-    return this.call('bootstrap');
+    return this.call('bootstrap').then(normalizeState);
   }
 
   save(state) {
-    return this.call('replace-state', state);
+    return this.call('replace-state', state).then(normalizeState);
   }
 
   testNotification() {
