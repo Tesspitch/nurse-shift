@@ -29,6 +29,7 @@
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5M5 20h14"/></symbol>
     <symbol id="i-send" viewBox="0 0 24 24"><path d="m3 11 17-8-7 18-2-8-8-2Zm8 2 9-10"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v5c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-3Zm-3 9 2 2 4-5"/></symbol>
+    <symbol id="i-profile" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
   </svg>
 
   <div class="app-shell" id="app-shell" hidden>
@@ -38,7 +39,7 @@
         <p class="eyebrow" id="screen-eyebrow">รอบปัจจุบัน</p>
         <h1 id="screen-title">ภาพรวมของฉัน</h1>
       </div>
-      <div class="profile" id="profile-badge" aria-label="ข้อมูลผู้ใช้"><span id="profile-initial">ผ</span></div>
+      <button class="profile" id="profile-badge" type="button" aria-label="ดูโปรไฟล์"><span id="profile-initial">ผ</span></button>
     </header>
 
     <main class="screen-wrap">
@@ -115,8 +116,21 @@
       </section>
 
       <section class="screen" data-screen="settings">
-        <form class="settings-form" id="settings-form">
-          <section class="settings-card">
+        <div class="settings-menu" id="settings-menu">
+          <button class="settings-menu-item" type="button" data-settings-open="profile"><span class="icon-bubble"><svg><use href="#i-profile"/></svg></span><span><b>โปรไฟล์ของฉัน</b><small id="settings-profile-name">ข้อมูลจากบัญชี LINE</small></span><svg><use href="#i-right"/></svg></button>
+          <button class="settings-menu-item" type="button" data-settings-open="income"><span class="icon-bubble peach"><svg><use href="#i-wallet"/></svg></span><span><b>อัตราคำนวณ</b><small>เงินเดือน ค่าใบประกอบ OT และรอบเงินเดือน</small></span><svg><use href="#i-right"/></svg></button>
+          <button class="settings-menu-item" type="button" data-settings-open="shift-types"><span class="icon-bubble lavender"><svg><use href="#i-clock"/></svg></span><span><b>ประเภทเวร</b><small>เวลาเริ่ม สิ้นสุด และค่าเพิ่ม</small></span><svg><use href="#i-right"/></svg></button>
+          <button class="settings-menu-item" type="button" data-settings-open="notifications"><span class="icon-bubble"><svg><use href="#i-bell"/></svg></span><span><b>การแจ้งเตือน LINE</b><small id="settings-notification-summary">เปิดใช้งาน</small></span><svg><use href="#i-right"/></svg></button>
+          <button class="settings-menu-item" type="button" data-settings-open="privacy"><span class="icon-bubble lavender"><svg><use href="#i-shield"/></svg></span><span><b>ข้อมูลและความเป็นส่วนตัว</b><small>ส่งออก สำรอง นำเข้า หรือลบข้อมูล</small></span><svg><use href="#i-right"/></svg></button>
+        </div>
+        <form class="settings-form" id="settings-form" hidden>
+          <header class="settings-detail-head"><button class="icon-button" id="settings-back" type="button" aria-label="กลับไปเมนูตั้งค่า"><svg><use href="#i-left"/></svg></button><div><p class="eyebrow" id="settings-detail-eyebrow">ตั้งค่า</p><h2 id="settings-detail-title">รายละเอียด</h2></div></header>
+          <section class="settings-card settings-section" data-settings-section="profile">
+            <div class="profile-detail"><div class="profile profile-large" id="settings-profile-picture"><span>ผ</span></div><div><b id="settings-profile-display-name">ผู้ใช้งาน</b><span>ชื่อและรูปภาพจากบัญชี LINE</span></div></div>
+            <div class="profile-facts"><div><span>การเชื่อมต่อ</span><b id="profile-connection-status">กำลังตรวจสอบ</b></div><div><span>การจัดเก็บข้อมูล</span><b>Supabase ส่วนบุคคล</b></div></div>
+            <p class="privacy-note">แอปใช้ LINE User ID เพื่อแยกข้อมูลของคุณออกจากผู้ใช้อื่น และไม่แสดงข้อมูลเงินเดือนให้ผู้ใช้อื่นเห็น</p>
+          </section>
+          <section class="settings-card settings-section" data-settings-section="income">
             <div class="section-heading"><div><p class="eyebrow">รายได้หลัก</p><h2>อัตราคำนวณ</h2></div></div>
             <div class="form-grid two">
               <label class="field"><span>ฐานเงินเดือน</span><span class="input-affix"><input name="salary" inputmode="decimal" min="0" type="number"><b>บาท</b></span></label>
@@ -126,22 +140,24 @@
               <label class="field"><span>วันเริ่มรอบ</span><span class="input-affix"><input name="cycleStartDay" inputmode="numeric" min="1" max="28" type="number"><b>ของเดือน</b></span></label>
             </div>
           </section>
-          <section class="settings-card">
+          <section class="settings-card settings-section" data-settings-section="shift-types">
             <div class="section-heading"><div><p class="eyebrow">ประเภทเวร</p><h2>เวลาและค่าเพิ่ม</h2></div></div>
             <div id="shift-type-settings"></div>
           </section>
-          <section class="settings-card">
+          <section class="settings-card settings-section" data-settings-section="notifications">
             <div class="setting-toggle"><span class="icon-bubble"><svg><use href="#i-bell"/></svg></span><span><b>แจ้งเตือนผ่าน LINE</b><small>ระบบส่งก่อนเวลาตามที่กำหนด</small></span><label class="switch"><input type="checkbox" name="notificationsEnabled"><i></i></label></div>
-            <div class="connection-status" id="line-status"><i></i><span>กำลังตรวจสอบการเชื่อมต่อ LINE</span><a id="add-line-friend" href="https://line.me/R/ti/p/@383bxufk" target="_blank" rel="noopener">เพิ่มเพื่อน</a></div>
-            <div class="reminder-list" id="reminder-settings"></div>
-            <div class="reminder-add">
-              <label class="field"><span>แจ้งก่อน</span><input id="reminder-amount" type="number" min="1" max="30" value="1" inputmode="numeric"></label>
-              <label class="field"><span>หน่วย</span><select id="reminder-unit"><option value="60">ชั่วโมง</option><option value="1440">วัน</option><option value="1">นาที</option></select></label>
-              <button class="btn btn-secondary" id="add-reminder" type="button"><svg><use href="#i-plus"/></svg>เพิ่ม</button>
-            </div>
-            <button class="btn btn-secondary full" id="test-notification" type="button"><svg><use href="#i-send"/></svg>ส่งข้อความทดสอบ</button>
+            <fieldset class="notification-options" id="notification-options">
+              <div class="connection-status" id="line-status"><i></i><span>กำลังตรวจสอบการเชื่อมต่อ LINE</span><a id="add-line-friend" href="https://line.me/R/ti/p/@383bxufk" target="_blank" rel="noopener">เพิ่มเพื่อน</a></div>
+              <div class="reminder-list" id="reminder-settings"></div>
+              <div class="reminder-add">
+                <label class="field"><span>แจ้งก่อน</span><input id="reminder-amount" type="number" min="1" max="30" value="1" inputmode="numeric"></label>
+                <label class="field"><span>หน่วย</span><select id="reminder-unit"><option value="60">ชั่วโมง</option><option value="1440">วัน</option><option value="1">นาที</option></select></label>
+                <button class="btn btn-secondary" id="add-reminder" type="button"><svg><use href="#i-plus"/></svg>เพิ่ม</button>
+              </div>
+              <button class="btn btn-secondary full" id="test-notification" type="button"><svg><use href="#i-send"/></svg>ส่งข้อความทดสอบ</button>
+            </fieldset>
           </section>
-          <section class="settings-card">
+          <section class="settings-card settings-section" data-settings-section="privacy">
             <div class="section-heading"><div><p class="eyebrow">ข้อมูลของคุณ</p><h2>สำรองและความเป็นส่วนตัว</h2></div><span class="icon-bubble lavender"><svg><use href="#i-shield"/></svg></span></div>
             <p class="privacy-note">ข้อมูลเงินเดือนและตารางเวรใช้เพื่อสรุปส่วนบุคคลเท่านั้น ไม่ใช่ระบบเงินเดือนหรือเอกสารรับรองจากนายจ้าง คุณดาวน์โหลดหรือลบข้อมูลทั้งหมดได้ทุกเมื่อ</p>
             <div class="data-actions">
@@ -152,7 +168,7 @@
             </div>
             <button class="btn btn-danger full" id="delete-account" type="button"><svg><use href="#i-trash"/></svg>ลบข้อมูลทั้งหมด</button>
           </section>
-          <button class="btn btn-primary full" type="submit">บันทึกการตั้งค่า</button>
+          <button class="btn btn-primary full" id="save-settings" type="submit">บันทึกการตั้งค่า</button>
         </form>
         <p class="mode-note" id="mode-note"></p>
       </section>
@@ -194,7 +210,7 @@
     <header class="sheet-head"><div><p class="eyebrow">เพิ่มข้อมูล</p><h2 id="shift-sheet-title">เพิ่มเวร</h2></div><button class="icon-button" data-close-sheet aria-label="ปิด"><svg><use href="#i-close"/></svg></button></header>
     <form id="shift-form" class="form-stack">
       <input type="hidden" name="id">
-      <label class="field"><span>วันที่</span><span class="input-affix date-input"><input name="workDate" type="text" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10" required><svg><use href="#i-calendar"/></svg></span><small>วัน/เดือน/ปี พ.ศ.</small></label>
+      <label class="field"><span>วันที่</span><span class="input-affix date-input"><input name="workDate" type="text" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10" required><input class="native-date-picker" id="shift-native-date" type="date" aria-label="เลือกวันที่จากปฏิทิน"><svg><use href="#i-calendar"/></svg></span><small>วัน/เดือน/ปี พ.ศ. หรือแตะไอคอนปฏิทิน</small></label>
       <label class="field"><span>ประเภทเวร</span><select name="shiftTypeId" id="shift-type-select"></select></label>
       <div class="form-grid two"><label class="field"><span>เริ่ม</span><input name="startTime" type="time" required></label><label class="field"><span>สิ้นสุด</span><input name="endTime" type="time" required></label></div>
       <label class="field"><span>OT เคสด่วนเพิ่มเติม</span><span class="input-affix"><input name="urgentOtHours" type="number" min="0" step="1" value="0" inputmode="numeric"><b>ชม.</b></span></label>
@@ -211,7 +227,7 @@
       <label class="field"><span>ประเภท</span><select name="kind"><option value="income">รายรับเพิ่ม</option><option value="deduction">รายการหัก</option></select></label>
       <label class="field"><span>ชื่อรายการ</span><input name="label" placeholder="เช่น ภาษี หรือประกันสังคม" required maxlength="80"></label>
       <label class="field"><span>จำนวนเงิน</span><span class="input-affix"><input name="amount" type="number" min="0" step="0.01" required inputmode="decimal"><b>บาท</b></span></label>
-      <label class="field"><span>วันที่ลงรายการ</span><span class="input-affix date-input"><input name="workDate" type="text" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10" required><svg><use href="#i-calendar"/></svg></span></label>
+      <label class="field"><span>วันที่ลงรายการ</span><span class="input-affix date-input"><input name="workDate" type="text" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10" required><input class="native-date-picker" id="finance-native-date" type="date" aria-label="เลือกวันที่จากปฏิทิน"><svg><use href="#i-calendar"/></svg></span></label>
       <button class="btn btn-primary full" type="submit">บันทึกรายการ</button>
     </form>
   </section>

@@ -26,6 +26,7 @@ let serviceMode = 'local';
 let toastTimer;
 let pendingNavigation = null;
 let lineFriendship = null;
+let settingsPanel = null;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -186,6 +187,13 @@ function renderSettings() {
   const form = $('#settings-form');
   for (const name of ['salary', 'licenseAllowance', 'otRate', 'standardHours', 'cycleStartDay']) form.elements[name].value = state.settings[name];
   form.elements.notificationsEnabled.checked = state.settings.notificationsEnabled;
+  $('#settings-profile-name').textContent = state.profile.displayName || 'ข้อมูลจากบัญชี LINE';
+  $('#settings-profile-display-name').textContent = state.profile.displayName || 'ผู้ใช้งาน';
+  $('#settings-notification-summary').textContent = state.settings.notificationsEnabled ? `เปิด · ${state.reminders.filter((item) => item.enabled).length} เวลา` : 'ปิดใช้งาน';
+  const profilePicture = $('#settings-profile-picture');
+  profilePicture.innerHTML = state.profile.pictureUrl
+    ? `<img src="${escapeHtml(state.profile.pictureUrl)}" alt="รูปของ ${escapeHtml(state.profile.displayName)}">`
+    : `<span>${escapeHtml(state.profile.displayName?.charAt(0) || 'ผ')}</span>`;
   $('#shift-type-settings').innerHTML = state.shiftTypes.map((type) => `
     <div class="shift-type-setting" data-type-id="${type.id}">
       <div class="type-name"><i style="--type-color:${type.color}"></i>${escapeHtml(type.name)}</div>
@@ -206,9 +214,14 @@ function renderSettings() {
         ? 'เชื่อมต่อ LINE และเพิ่ม Official Account แล้ว'
         : 'เชื่อมต่อ LINE แล้ว กดส่งข้อความทดสอบเพื่อยืนยัน';
   $('#add-line-friend').hidden = serviceMode !== 'connected' || lineFriendship === true;
+  $('#profile-connection-status').textContent = serviceMode !== 'connected'
+    ? 'โหมดทดสอบในเครื่อง'
+    : lineFriendship === false ? 'ยังไม่ได้เพิ่มเพื่อน' : 'เชื่อมต่อ LINE แล้ว';
+  $('#notification-options').disabled = !state.settings.notificationsEnabled;
   $('#mode-note').textContent = serviceMode === 'connected'
     ? 'เชื่อมต่อ LINE และ Supabase แล้ว ข้อมูลจะถูกบันทึกในบัญชีของคุณ'
     : 'ขณะนี้เป็นโหมดทดสอบในเครื่อง ข้อมูลเก็บไว้ในเบราว์เซอร์นี้เท่านั้น';
+  applySettingsView();
 }
 
 function renderSlip(payroll) {
@@ -287,13 +300,52 @@ const screenMeta = {
   settings: ['ปรับให้เหมาะกับคุณ', 'ตั้งค่าระบบ']
 };
 
-function showScreen(name) {
+const settingsMeta = {
+  profile: ['บัญชีของคุณ', 'โปรไฟล์ของฉัน'],
+  income: ['รายได้หลัก', 'อัตราคำนวณ'],
+  'shift-types': ['ตารางเวร', 'ประเภทเวร'],
+  notifications: ['การแจ้งเตือน', 'แจ้งเตือนผ่าน LINE'],
+  privacy: ['ข้อมูลของคุณ', 'ข้อมูลและความเป็นส่วนตัว']
+};
+
+function applySettingsView() {
+  const menu = $('#settings-menu');
+  const form = $('#settings-form');
+  if (!menu || !form) return;
+  menu.hidden = Boolean(settingsPanel);
+  form.hidden = !settingsPanel;
+  $$('.settings-section').forEach((section) => section.classList.toggle('is-active', section.dataset.settingsSection === settingsPanel));
+  const meta = settingsMeta[settingsPanel];
+  if (meta) {
+    $('#settings-detail-eyebrow').textContent = meta[0];
+    $('#settings-detail-title').textContent = meta[1];
+  }
+  $('#save-settings').hidden = !['income', 'shift-types', 'notifications'].includes(settingsPanel);
+}
+
+function showSettingsMenu() {
+  settingsPanel = null;
+  applySettingsView();
+  $('#screen-eyebrow').textContent = screenMeta.settings[0];
+  $('#screen-title').textContent = screenMeta.settings[1];
+}
+
+function openSettingsSection(name) {
+  if (!settingsMeta[name]) return;
+  settingsPanel = name;
+  showScreen('settings', true);
+  applySettingsView();
+}
+
+function showScreen(name, preserveSettings = false) {
   if (!screenMeta[name]) return;
+  if (name === 'settings' && !preserveSettings) settingsPanel = null;
   $$('.screen').forEach((screen) => screen.classList.toggle('is-active', screen.dataset.screen === name));
   $$('[data-nav]').forEach((button) => button.classList.toggle('is-active', button.dataset.nav === name));
   const [eyebrow, title] = screenMeta[name];
   $('#screen-eyebrow').textContent = eyebrow;
   $('#screen-title').textContent = title;
+  if (name === 'settings') applySettingsView();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -339,6 +391,7 @@ function openShiftSheet(date = selectedDate, urgent = false) {
   form.reset();
   form.elements.id.value = '';
   form.elements.workDate.value = formatDateInput(date);
+  $('#shift-native-date').value = date;
   form.elements.urgentOtHours.value = urgent ? '1' : '0';
   $('#shift-sheet-title').textContent = urgent ? 'เพิ่ม OT เคสด่วน' : 'เพิ่มเวร';
   populateShiftTypeSelect();
@@ -351,6 +404,7 @@ function openFinanceSheet() {
   const form = $('#finance-form');
   form.reset();
   form.elements.workDate.value = formatDateInput(selectedDate || todayIso);
+  $('#finance-native-date').value = selectedDate || todayIso;
   openSheet($('#finance-sheet'));
 }
 
@@ -387,6 +441,9 @@ function updateOverlapWarning() {
 function bindEvents() {
   $$('[data-nav]').forEach((button) => button.addEventListener('click', () => showScreen(button.dataset.nav)));
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showScreen(button.dataset.go)));
+  $('#profile-badge').addEventListener('click', () => openSettingsSection('profile'));
+  $$('[data-settings-open]').forEach((button) => button.addEventListener('click', () => openSettingsSection(button.dataset.settingsOpen)));
+  $('#settings-back').addEventListener('click', showSettingsMenu);
   $$('[data-action="open-shift"]').forEach((button) => button.addEventListener('click', () => openShiftSheet(todayIso)));
   $$('[data-action="open-urgent"]').forEach((button) => button.addEventListener('click', () => openShiftSheet(todayIso, true)));
   $$('[data-action="open-finance"]').forEach((button) => button.addEventListener('click', openFinanceSheet));
@@ -461,10 +518,30 @@ function bindEvents() {
 
   $('#shift-type-select').addEventListener('change', (event) => { updateShiftTimes(event.target.value); updateOverlapWarning(); });
   $('#shift-form').addEventListener('input', (event) => {
-    if (event.target.name === 'workDate') event.target.value = maskDateInput(event.target.value);
+    if (event.target.name === 'workDate') {
+      event.target.value = maskDateInput(event.target.value);
+      const parsed = parseDateInput(event.target.value);
+      if (parsed) $('#shift-native-date').value = parsed;
+    }
     updateOverlapWarning();
   });
-  $('#finance-form [name="workDate"]').addEventListener('input', (event) => { event.target.value = maskDateInput(event.target.value); });
+  $('#shift-native-date').addEventListener('change', (event) => {
+    if (!event.target.value) return;
+    $('#shift-form').elements.workDate.value = formatDateInput(event.target.value);
+    updateOverlapWarning();
+  });
+  $('#finance-form [name="workDate"]').addEventListener('input', (event) => {
+    event.target.value = maskDateInput(event.target.value);
+    const parsed = parseDateInput(event.target.value);
+    if (parsed) $('#finance-native-date').value = parsed;
+  });
+  $('#finance-native-date').addEventListener('change', (event) => {
+    if (event.target.value) $('#finance-form').elements.workDate.value = formatDateInput(event.target.value);
+  });
+  $('#settings-form [name="notificationsEnabled"]').addEventListener('change', (event) => {
+    $('#notification-options').disabled = !event.target.checked;
+    $('#settings-notification-summary').textContent = event.target.checked ? `เปิด · ${state.reminders.filter((item) => item.enabled).length} เวลา` : 'ปิดใช้งาน';
+  });
 
   $('#shift-form').addEventListener('submit', async (event) => {
     event.preventDefault();
