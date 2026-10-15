@@ -28,6 +28,9 @@ function upgradeLegacyState(state) {
       }));
   }
   state.shifts = (state.shifts || []).map((shift) => ({ ...shift, urgentOtHours: 0 }));
+  if (!Array.isArray(state.dayOffs)) state.dayOffs = [];
+  const palette = { '#B7791F': '#F59E0B', '#9B285B': '#8B5CF6', '#3559A8': '#2563EB' };
+  state.shiftTypes = (state.shiftTypes || []).map((type) => ({ ...type, color: palette[type.color] || type.color }));
   return state;
 }
 

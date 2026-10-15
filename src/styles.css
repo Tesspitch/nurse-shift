@@ -124,6 +124,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .legend { display: flex; flex-wrap: wrap; gap: 7px 12px; margin: 11px 2px 0; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-600); font-size: 10px; }
 .legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--dot-color); }
+.calendar-add-action { position: sticky; z-index: 4; bottom: calc(76px + env(safe-area-inset-bottom)); margin-top: 14px; box-shadow: 0 10px 28px rgba(163,65,106,.24); }
 .shift-list { display: grid; gap: 8px; }
 .shift-item, .financial-item { display: flex; align-items: center; gap: 11px; padding: 13px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
 .shift-bar { align-self: stretch; width: 4px; border-radius: 999px; background: var(--type-color); }
@@ -249,6 +250,27 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .sheet-handle { width: 44px; height: 4px; margin: 3px auto 16px; border-radius: 999px; background: #ded2d7; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .sheet-head h2 { margin: 2px 0 0; font-size: 21px; }
+.bulk-shift-flow { display: grid; gap: 17px; }
+.step-label { display: block; margin-bottom: 9px; font-size: 13px; }
+.bulk-type-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.bulk-type-button { display: grid; min-height: 56px; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink-800); background: white; text-align: left; }
+.bulk-type-button i { width: 9px; height: 9px; border-radius: 50%; background: var(--type-color); }
+.bulk-type-button span { overflow: hidden; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.bulk-type-button small { display: grid; min-width: 22px; height: 22px; place-items: center; border-radius: 999px; color: var(--ink-600); background: var(--surface-soft); font-size: 10px; }
+.bulk-type-button.is-active { border-color: var(--type-color); background: color-mix(in srgb, var(--type-color) 9%, white); box-shadow: 0 4px 14px color-mix(in srgb, var(--type-color) 18%, transparent); }
+.bulk-calendar-toolbar { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; margin-bottom: 8px; }
+.bulk-calendar-toolbar .icon-button { width: 40px; height: 40px; }
+.bulk-calendar-toolbar strong { text-align: center; font-size: 14px; }
+.bulk-calendar-card { padding: 7px 5px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-soft); }
+.bulk-calendar-grid .calendar-day { min-height: 43px; }
+.bulk-calendar-grid .calendar-day.is-bulk-selected .day-number { color: white; background: var(--selection-color, var(--pink-700)); box-shadow: 0 3px 10px color-mix(in srgb, var(--selection-color, var(--pink-700)) 28%, transparent); }
+.bulk-calendar-grid .calendar-day.has-other-selection::after { position: absolute; right: 4px; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--other-selection-color, var(--pink-500)); content: ''; }
+.bulk-hint { display: block; margin-top: 7px; color: var(--ink-600); line-height: 1.5; }
+.bulk-preview { display: grid; gap: 7px; min-height: 52px; padding: 11px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
+.bulk-preview-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; }
+.bulk-preview-row span { color: var(--ink-600); }
+.bulk-preview-warning { padding-top: 7px; border-top: 1px solid #edd2ae; color: var(--warning); font-size: 10px; line-height: 1.5; }
+.day-off-item { background: #f2fbf5; }
 .inline-warning { display: flex; gap: 10px; padding: 12px; border: 1px solid #edd2ae; border-radius: 13px; color: var(--warning); background: #fff8ed; }
 .inline-warning svg { flex: 0 0 20px; }
 .inline-warning span { display: grid; gap: 2px; }
@@ -301,6 +323,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   .shift-type-setting .type-name { grid-column: 1 / -1; }
   .reminder-add { grid-template-columns: 1fr 1fr; }
   .reminder-add .btn { grid-column: 1 / -1; }
+  .bulk-type-options { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {

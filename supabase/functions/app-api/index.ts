@@ -23,7 +23,7 @@ const supabase = createClient(
 const validationCodes = new Set([
   'INVALID_STATE', 'INVALID_SETTINGS', 'INVALID_STANDARD_HOURS', 'INVALID_CYCLE_START_DAY',
   'INVALID_COLLECTIONS', 'SHIFT_TYPES_REQUIRED', 'INVALID_SHIFT_TYPE', 'INVALID_SHIFT',
-  'INVALID_SPECIAL_OT_ITEM', 'INVALID_FINANCIAL_ITEM', 'INVALID_REMINDER', 'DUPLICATE_ID', 'PAYLOAD_TOO_LARGE'
+  'INVALID_SPECIAL_OT_ITEM', 'INVALID_DAY_OFF', 'INVALID_DAY_OFF_CONFLICT', 'INVALID_FINANCIAL_ITEM', 'INVALID_REMINDER', 'DUPLICATE_ID', 'PAYLOAD_TOO_LARGE'
 ]);
 
 function requestOrigin(request: Request) {
@@ -73,9 +73,9 @@ async function authenticateRequest(request: Request) {
 }
 
 const defaultShiftTypes = [
-  { id: 'morning', name: 'เวรเช้า', start_time: '08:00', end_time: '16:00', premium: 0, color: '#B7791F', sort_order: 1 },
-  { id: 'evening', name: 'เวรบ่าย', start_time: '16:00', end_time: '00:00', premium: 200, color: '#9B285B', sort_order: 2 },
-  { id: 'night', name: 'เวรดึก', start_time: '00:00', end_time: '08:00', premium: 300, color: '#3559A8', sort_order: 3 }
+  { id: 'morning', name: 'เวรเช้า', start_time: '08:00', end_time: '16:00', premium: 0, color: '#F59E0B', sort_order: 1 },
+  { id: 'evening', name: 'เวรบ่าย', start_time: '16:00', end_time: '00:00', premium: 200, color: '#8B5CF6', sort_order: 2 },
+  { id: 'night', name: 'เวรดึก', start_time: '00:00', end_time: '08:00', premium: 300, color: '#2563EB', sort_order: 3 }
 ];
 
 async function ensureProfile(lineUser: VerifiedLineUser) {
@@ -98,15 +98,16 @@ async function ensureProfile(lineUser: VerifiedLineUser) {
 }
 
 async function getState(profile: { id: string; display_name: string; picture_url: string | null }) {
-  const [settingsResult, typesResult, shiftsResult, specialOtResult, itemsResult, remindersResult] = await Promise.all([
+  const [settingsResult, typesResult, shiftsResult, specialOtResult, dayOffsResult, itemsResult, remindersResult] = await Promise.all([
     supabase.from('user_settings').select('*').eq('user_id', profile.id).single(),
     supabase.from('shift_types').select('*').eq('user_id', profile.id).order('sort_order'),
     supabase.from('shifts').select('*').eq('user_id', profile.id).order('work_date').order('start_time'),
     supabase.from('special_ot_items').select('*').eq('user_id', profile.id).order('work_date'),
+    supabase.from('day_offs').select('*').eq('user_id', profile.id).order('work_date'),
     supabase.from('financial_items').select('*').eq('user_id', profile.id).order('work_date'),
     supabase.from('reminders').select('*').eq('user_id', profile.id).order('offset_minutes', { ascending: false })
   ]);
-  const error = settingsResult.error || typesResult.error || shiftsResult.error || specialOtResult.error || itemsResult.error || remindersResult.error;
+  const error = settingsResult.error || typesResult.error || shiftsResult.error || specialOtResult.error || dayOffsResult.error || itemsResult.error || remindersResult.error;
   if (error) throw error;
   const settings = settingsResult.data;
   const shiftsById = new Map(shiftsResult.data.map((shift) => [shift.id, shift]));
@@ -136,6 +137,7 @@ async function getState(profile: { id: string; display_name: string; picture_url
     shiftTypes: typesResult.data.map((type) => ({ id: type.id, name: type.name, startTime: type.start_time.slice(0, 5), endTime: type.end_time.slice(0, 5), premium: Number(type.premium), color: type.color })),
     shifts: shiftsResult.data.map((shift) => ({ id: shift.id, shiftTypeId: shift.shift_type_id, workDate: shift.work_date, startTime: shift.start_time.slice(0, 5), endTime: shift.end_time.slice(0, 5), urgentOtHours: 0, note: shift.note || '' })),
     specialOtItems,
+    dayOffs: dayOffsResult.data.map((item) => ({ id: item.id, workDate: item.work_date })),
     financialItems: itemsResult.data.map((item) => ({ id: item.id, kind: item.kind, label: item.label, amount: Number(item.amount), workDate: item.work_date })),
     reminders: remindersResult.data.map((reminder) => ({ id: reminder.id, offsetMinutes: reminder.offset_minutes, enabled: reminder.enabled }))
   };
@@ -174,12 +176,13 @@ function validateState(state: Record<string, unknown>) {
   const shiftTypes = state.shiftTypes as Array<Record<string, unknown>>;
   const shifts = state.shifts as Array<Record<string, unknown>>;
   const specialOtItems = state.specialOtItems as Array<Record<string, unknown>>;
+  const dayOffs = state.dayOffs as Array<Record<string, unknown>>;
   const items = state.financialItems as Array<Record<string, unknown>>;
   const reminders = state.reminders as Array<Record<string, unknown>>;
-  if (![shiftTypes, shifts, specialOtItems, items, reminders].every(Array.isArray)) throw new Error('INVALID_COLLECTIONS');
+  if (![shiftTypes, shifts, specialOtItems, dayOffs, items, reminders].every(Array.isArray)) throw new Error('INVALID_COLLECTIONS');
   if (shiftTypes.length < 1 || shiftTypes.length > 20) throw new Error('SHIFT_TYPES_REQUIRED');
-  if (shifts.length > 5000 || specialOtItems.length > 5000 || items.length > 5000 || reminders.length > 20) throw new Error('PAYLOAD_TOO_LARGE');
-  assertUniqueIds(shiftTypes); assertUniqueIds(shifts); assertUniqueIds(specialOtItems); assertUniqueIds(items); assertUniqueIds(reminders);
+  if (shifts.length > 5000 || specialOtItems.length > 5000 || dayOffs.length > 5000 || items.length > 5000 || reminders.length > 20) throw new Error('PAYLOAD_TOO_LARGE');
+  assertUniqueIds(shiftTypes); assertUniqueIds(shifts); assertUniqueIds(specialOtItems); assertUniqueIds(dayOffs); assertUniqueIds(items); assertUniqueIds(reminders);
 
   const typeIds = new Set<string>();
   for (const type of shiftTypes) {
@@ -203,6 +206,13 @@ function validateState(state: Record<string, unknown>) {
       || !isFiniteNumber(item.hours, 1, 24)
       || typeof item.note !== 'string' || item.note.length > 120) throw new Error('INVALID_SPECIAL_OT_ITEM');
   }
+  const dayOffDates = new Set<string>();
+  for (const item of dayOffs) {
+    if (typeof item.id !== 'string' || !/^[0-9a-fA-F-]{36}$/.test(item.id) || !isDate(item.workDate)
+      || dayOffDates.has(String(item.workDate))) throw new Error('INVALID_DAY_OFF');
+    dayOffDates.add(String(item.workDate));
+  }
+  if (shifts.some((shift) => dayOffDates.has(String(shift.workDate)))) throw new Error('INVALID_DAY_OFF_CONFLICT');
   for (const item of items) {
     if (typeof item.id !== 'string' || !/^[0-9a-fA-F-]{36}$/.test(item.id)
       || !['income', 'deduction'].includes(String(item.kind))

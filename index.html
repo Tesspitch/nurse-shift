@@ -58,7 +58,7 @@
         <section class="section-block">
           <div class="section-heading"><div><p class="eyebrow">ทำรายการด่วน</p><h2>วันนี้ต้องทำอะไร</h2></div></div>
           <div class="quick-grid">
-            <button class="quick-card" data-action="open-shift"><span class="icon-bubble"><svg><use href="#i-plus"/></svg></span><b>เพิ่มเวร</b><small>กรอกเวรปกติ</small></button>
+            <button class="quick-card" data-action="open-shift"><span class="icon-bubble"><svg><use href="#i-plus"/></svg></span><b>เพิ่มเวร</b><small>เลือกหลายวันได้</small></button>
             <button class="quick-card" data-action="open-special-ot"><span class="icon-bubble peach"><svg><use href="#i-clock"/></svg></span><b>OT พิเศษ</b><small>เพิ่มชั่วโมงและหมายเหตุ</small></button>
             <button class="quick-card" data-action="open-finance"><span class="icon-bubble lavender"><svg><use href="#i-wallet"/></svg></span><b>รายรับ/รายจ่าย</b><small>เพิ่มรายการเอง</small></button>
           </div>
@@ -82,7 +82,7 @@
           <button class="icon-button" id="next-month" aria-label="เดือนถัดไป"><svg><use href="#i-right"/></svg></button>
         </div>
         <div class="calendar-actions">
-          <p>แตะวันที่เพื่อเพิ่มเวร</p>
+          <p>แตะวันที่เพื่อดูรายละเอียด</p>
           <button class="view-toggle" id="calendar-toggle" aria-pressed="false"><svg><use href="#i-calendar"/></svg><span>ขยาย</span></button>
         </div>
         <div class="calendar-card">
@@ -91,9 +91,10 @@
         </div>
         <div class="legend" id="shift-legend"></div>
         <section class="section-block">
-          <div class="section-heading"><div><p class="eyebrow">วันที่เลือก</p><h2 id="selected-date-title">รายการเวร</h2></div><button class="btn btn-small" data-action="open-selected-shift"><svg><use href="#i-plus"/></svg>เพิ่มเวร</button></div>
+          <div class="section-heading"><div><p class="eyebrow">วันที่เลือก</p><h2 id="selected-date-title">รายการเวร</h2></div></div>
           <div id="selected-shifts"></div>
         </section>
+        <button class="btn btn-primary full calendar-add-action" type="button" data-action="open-shift"><svg><use href="#i-plus"/></svg>เพิ่มเวรหลายวัน</button>
       </section>
 
       <section class="screen" data-screen="finance">
@@ -211,16 +212,18 @@
   <div class="modal-backdrop" id="modal-backdrop" hidden></div>
   <section class="bottom-sheet" id="shift-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="shift-sheet-title">
     <div class="sheet-handle"></div>
-    <header class="sheet-head"><div><p class="eyebrow">เพิ่มข้อมูล</p><h2 id="shift-sheet-title">เพิ่มเวร</h2></div><button class="icon-button" data-close-sheet aria-label="ปิด"><svg><use href="#i-close"/></svg></button></header>
-    <form id="shift-form" class="form-stack">
-      <input type="hidden" name="id">
-      <label class="field"><span>วันที่</span><span class="input-affix date-input"><input name="workDate" type="text" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10" required><input class="native-date-picker" id="shift-native-date" type="date" aria-label="เลือกวันที่จากปฏิทิน"><svg><use href="#i-calendar"/></svg></span><small>วัน/เดือน/ปี พ.ศ. หรือแตะไอคอนปฏิทิน</small></label>
-      <label class="field"><span>ประเภทเวร</span><select name="shiftTypeId" id="shift-type-select"></select></label>
-      <div class="form-grid two"><label class="field"><span>เริ่ม</span><input name="startTime" type="time" required></label><label class="field"><span>สิ้นสุด</span><input name="endTime" type="time" required></label></div>
-      <label class="field"><span>หมายเหตุ</span><input name="note" placeholder="ไม่บังคับ" maxlength="120"></label>
-      <div class="inline-warning" id="overlap-warning" hidden><svg><use href="#i-alert"/></svg><span><b>ตรวจพบเวลาซ้อน</b><small id="overlap-message">มีเวรอื่นในช่วงเวลาเดียวกัน คุณยังบันทึกต่อได้</small></span></div>
-      <button class="btn btn-primary full" type="submit">บันทึกเวร</button>
-    </form>
+    <header class="sheet-head"><div><p class="eyebrow">เพิ่มหลายวัน</p><h2 id="shift-sheet-title">จัดตารางเวร</h2></div><button class="icon-button" data-close-sheet aria-label="ปิด"><svg><use href="#i-close"/></svg></button></header>
+    <div class="bulk-shift-flow">
+      <div><b class="step-label">1. เลือกประเภท</b><div class="bulk-type-options" id="bulk-type-options"></div></div>
+      <div>
+        <b class="step-label">2. เลือกวันที่</b>
+        <div class="bulk-calendar-toolbar"><button class="icon-button" id="bulk-previous-month" type="button" aria-label="เดือนก่อน"><svg><use href="#i-left"/></svg></button><strong id="bulk-calendar-title">เดือน</strong><button class="icon-button" id="bulk-next-month" type="button" aria-label="เดือนถัดไป"><svg><use href="#i-right"/></svg></button></div>
+        <div class="bulk-calendar-card"><div class="weekday-row"><span>อา.</span><span>จ.</span><span>อ.</span><span>พ.</span><span>พฤ.</span><span>ศ.</span><span>ส.</span></div><div class="calendar-grid bulk-calendar-grid" id="bulk-calendar-grid"></div></div>
+        <small class="bulk-hint">แตะวันที่เพื่อเลือกหรือยกเลิก เปลี่ยนประเภทได้โดยวันที่เดิมจะยังอยู่</small>
+      </div>
+      <div><b class="step-label">3. ตรวจสอบก่อนบันทึก</b><div class="bulk-preview" id="bulk-preview" aria-live="polite"></div></div>
+      <button class="btn btn-primary full" id="bulk-save" type="button" disabled>บันทึกทั้งหมด</button>
+    </div>
   </section>
 
   <section class="bottom-sheet" id="special-ot-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="special-ot-sheet-title">

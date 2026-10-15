@@ -1,6 +1,15 @@
 import { expect, test } from '@playwright/test';
 
 async function completeOnboarding(page) {
+  await page.addInitScript(() => {
+    const NativeDate = Date;
+    const fixed = new NativeDate('2026-10-15T12:00:00+07:00').valueOf();
+    class MockDate extends NativeDate {
+      constructor(...args) { super(...(args.length ? args : [fixed])); }
+      static now() { return fixed; }
+    }
+    window.Date = MockDate;
+  });
   await page.goto('/');
   const form = page.locator('#onboarding-form');
   await form.locator('[name="salary"]').fill('20000');
@@ -12,24 +21,22 @@ async function completeOnboarding(page) {
   await expect(page.locator('#app-shell')).toBeVisible();
 }
 
-async function addShift(page, { type, start, end }) {
+async function addShift(page, { type }) {
   await page.locator('[data-action="open-shift"]:visible').click();
-  const form = page.locator('#shift-form');
-  await form.locator('[name="workDate"]').fill('01/10/2569');
-  await form.locator('[name="shiftTypeId"]').selectOption(type);
-  await form.locator('[name="startTime"]').fill(start);
-  await form.locator('[name="endTime"]').fill(end);
-  await form.getByRole('button', { name: 'บันทึกเวร' }).click();
+  await page.locator(`[data-bulk-type="${type}"]`).click();
+  await page.locator('[data-bulk-date="2026-10-01"]').click();
+  await page.locator('#bulk-save').click();
   await expect(page.locator('#shift-sheet')).toBeHidden();
 }
 
-test('calculates parallel shifts once and manages independent special OT', async ({ page }) => {
+test('manages independent special OT with the bulk shift flow', async ({ page }) => {
   await completeOnboarding(page);
 
-  await addShift(page, { type: 'morning', start: '08:00', end: '16:00' });
-  await addShift(page, { type: 'evening', start: '12:00', end: '20:00' });
-  await expect(page.locator('#worked-hours')).toHaveText('12 / 176 ชม.');
+  await addShift(page, { type: 'morning' });
+  await addShift(page, { type: 'evening' });
+  await expect(page.locator('#worked-hours')).toHaveText('16 / 176 ชม.');
 
+  await page.locator('[data-nav="home"]').click();
   await page.locator('[data-action="open-special-ot"]:visible').click();
   const specialForm = page.locator('#special-ot-form');
   await specialForm.locator('[name="workDate"]').fill('01/10/2569');
@@ -50,14 +57,14 @@ test('calculates parallel shifts once and manages independent special OT', async
   await page.locator('#settings-form [name="standardHours"]').fill('10');
   await page.locator('#save-settings').click();
   await page.locator('[data-nav="home"]').click();
-  await expect(page.locator('#worked-hours')).toHaveText('12 / 10 ชม.');
-  await expect(page.locator('#ot-hours')).toHaveText('6 ชม.');
+  await expect(page.locator('#worked-hours')).toHaveText('16 / 10 ชม.');
+  await expect(page.locator('#ot-hours')).toHaveText('10 ชม.');
 
   await page.locator('[data-nav="finance"]').click();
   await page.locator('#special-ot-items [data-delete-special-ot]').click();
   await expect(page.locator('#special-ot-items')).toContainText('ยังไม่มี OT พิเศษ');
   await page.locator('[data-nav="home"]').click();
-  await expect(page.locator('#ot-hours')).toHaveText('2 ชม.');
+  await expect(page.locator('#ot-hours')).toHaveText('6 ชม.');
 
   const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   expect(hasHorizontalOverflow).toBe(false);

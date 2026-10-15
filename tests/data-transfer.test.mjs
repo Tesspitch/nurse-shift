@@ -17,11 +17,13 @@ test('restores a backup without replacing the signed-in profile or state version
   const source = createInitialState();
   source.settings.salary = 25000;
   source.specialOtItems.push({ id: crypto.randomUUID(), workDate: '2026-10-02', hours: 2, note: 'เคสด่วน' });
+  source.dayOffs.push({ id: crypto.randomUUID(), workDate: '2026-10-04' });
   const restored = restoreBackup(current, createBackup(source));
   assert.equal(restored.settings.salary, 25000);
   assert.equal(restored.version, 7);
   assert.deepEqual(restored.profile, current.profile);
   assert.equal(restored.specialOtItems[0].hours, 2);
+  assert.equal(restored.dayOffs[0].workDate, '2026-10-04');
 });
 
 test('migrates legacy shift OT into independent special OT during restore', () => {

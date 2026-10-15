@@ -1,4 +1,5 @@
-import { calculatePayroll, findOverlaps } from './calculations.js';
+import { calculatePayroll } from './calculations.js';
+import { applyBulkPlan, buildBulkPlan, DAY_OFF_TYPE } from './bulk-shifts.js';
 import {
   calendarCells,
   formatDateInput,
@@ -27,6 +28,10 @@ let toastTimer;
 let pendingNavigation = null;
 let lineFriendship = null;
 let settingsPanel = null;
+let bulkMonth = new Date(calendarMonth);
+let bulkActiveType = null;
+let bulkSelections = new Map();
+let bulkSaving = false;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -61,7 +66,6 @@ function currentPayroll() {
 async function commit(change, successMessage) {
   const previous = structuredClone(state);
   change();
-  renderAll();
   try {
     state = await dataService.save(state);
     renderAll();
@@ -155,24 +159,27 @@ function renderCalendar() {
     groups.get(item.workDate).push(item);
     return groups;
   }, new Map());
+  const dayOffDates = new Set((state.dayOffs || []).map((item) => item.workDate));
   $('#calendar-grid').classList.toggle('is-expanded', calendarExpanded);
   $('#calendar-grid').innerHTML = calendarCells(calendarMonth).map((cell) => {
     const shifts = shiftsByDate.get(cell.iso) || [];
     const specialOtItems = specialOtByDate.get(cell.iso) || [];
+    const isDayOff = dayOffDates.has(cell.iso);
     const typeItems = shifts.map((shift) => state.shiftTypes.find((type) => type.id === shift.shiftTypeId)).filter(Boolean);
-    const labels = `${typeItems.map((type) => `<span style="--dot-color:${type.color}">${escapeHtml(type.name.replace('เวร', ''))}</span>`).join('')}${specialOtItems.length ? '<span style="--dot-color:#DB2777">OT</span>' : ''}`;
-    const dots = `${typeItems.map((type) => `<i style="--dot-color:${type.color}"></i>`).join('')}${specialOtItems.length ? '<i style="--dot-color:#DB2777"></i>' : ''}`;
+    const labels = `${typeItems.map((type) => `<span style="--dot-color:${type.color}">${escapeHtml(type.name.replace('เวร', ''))}</span>`).join('')}${specialOtItems.length ? '<span style="--dot-color:#DB2777">OT</span>' : ''}${isDayOff ? '<span style="--dot-color:#16A34A">หยุด</span>' : ''}`;
+    const dots = `${typeItems.map((type) => `<i style="--dot-color:${type.color}"></i>`).join('')}${specialOtItems.length ? '<i style="--dot-color:#DB2777"></i>' : ''}${isDayOff ? '<i style="--dot-color:#16A34A"></i>' : ''}`;
     const classes = [!cell.currentMonth && 'is-outside', cell.iso === todayIso && 'is-today', cell.iso === selectedDate && 'is-selected'].filter(Boolean).join(' ');
-    return `<button class="calendar-day ${classes}" data-date="${cell.iso}" aria-label="${formatThaiDate(cell.iso)}${typeItems.length ? ` มี ${typeItems.map((type) => type.name).join(' และ')}` : ''}${specialOtItems.length ? ' มี OT พิเศษ' : ''} แตะเพื่อเพิ่มเวร"><span class="day-number">${cell.day}</span><span class="day-dots">${dots}</span><span class="day-labels">${labels}</span></button>`;
+    return `<button class="calendar-day ${classes}" data-date="${cell.iso}" aria-label="${formatThaiDate(cell.iso)}${typeItems.length ? ` มี ${typeItems.map((type) => type.name).join(' และ')}` : ''}${specialOtItems.length ? ' มี OT พิเศษ' : ''}${isDayOff ? ' เป็นวันหยุด' : ''} แตะเพื่อดูรายละเอียด"><span class="day-number">${cell.day}</span><span class="day-dots">${dots}</span><span class="day-labels">${labels}</span></button>`;
   }).join('');
 
-  $('#shift-legend').innerHTML = `${state.shiftTypes.map((type) => `<span><i style="--dot-color:${type.color}"></i>${escapeHtml(type.name)}</span>`).join('')}<span><i style="--dot-color:#DB2777"></i>OT พิเศษ</span>`;
+  $('#shift-legend').innerHTML = `${state.shiftTypes.map((type) => `<span><i style="--dot-color:${type.color}"></i>${escapeHtml(type.name)}</span>`).join('')}<span><i style="--dot-color:#DB2777"></i>OT พิเศษ</span><span><i style="--dot-color:#16A34A"></i>วันหยุด</span>`;
   $('#selected-date-title').textContent = formatThaiDate(selectedDate, true);
   const selectedShifts = (shiftsByDate.get(selectedDate) || []).sort((a, b) => a.startTime.localeCompare(b.startTime));
   const selectedSpecialOt = specialOtByDate.get(selectedDate) || [];
-  $('#selected-shifts').innerHTML = selectedShifts.length || selectedSpecialOt.length
-    ? `<div class="shift-list">${selectedShifts.map(shiftItemHtml).join('')}${selectedSpecialOt.map(specialOtItemHtml).join('')}</div>`
-    : '<div class="empty-card"><b>วันนี้ยังไม่มีเวร</b><span>แตะวันที่หรือปุ่มเพิ่มเวรเพื่อบันทึก</span></div>';
+  const selectedDayOff = (state.dayOffs || []).find((item) => item.workDate === selectedDate);
+  $('#selected-shifts').innerHTML = selectedShifts.length || selectedSpecialOt.length || selectedDayOff
+    ? `<div class="shift-list">${selectedDayOff ? dayOffItemHtml(selectedDayOff) : ''}${selectedShifts.map(shiftItemHtml).join('')}${selectedSpecialOt.map(specialOtItemHtml).join('')}</div>`
+    : '<div class="empty-card"><b>วันนี้ยังไม่มีรายการ</b><span>กดปุ่มเพิ่มเวรด้านล่างเพื่อจัดตาราง</span></div>';
 }
 
 function shiftItemHtml(shift) {
@@ -182,6 +189,10 @@ function shiftItemHtml(shift) {
 
 function specialOtItemHtml(item) {
   return `<article class="shift-item"><i class="shift-bar" style="--type-color:#DB2777"></i><div class="content"><b>OT พิเศษ ${numberFormat.format(item.hours)} ชม.</b><span>${escapeHtml(item.note || 'ไม่มีหมายเหตุ')}</span></div><button class="text-button" type="button" data-edit-special-ot="${item.id}">แก้ไข</button><button class="delete-button" type="button" data-delete-special-ot="${item.id}" aria-label="ลบ OT พิเศษ"><svg><use href="#i-trash"/></svg></button></article>`;
+}
+
+function dayOffItemHtml(item) {
+  return `<article class="shift-item day-off-item"><i class="shift-bar" style="--type-color:#16A34A"></i><div class="content"><b>วันหยุด</b><span>0 ชั่วโมง · ไม่มีค่าเวรและไม่หักเงินเดือน</span></div><button class="delete-button" data-delete-day-off="${item.id}" aria-label="ยกเลิกวันหยุด"><svg><use href="#i-trash"/></svg></button></article>`;
 }
 
 function renderFinance(payroll) {
@@ -376,18 +387,6 @@ function applyNavigationIntent() {
   pendingNavigation = null;
 }
 
-function populateShiftTypeSelect(selectedId = state.shiftTypes[0]?.id) {
-  $('#shift-type-select').innerHTML = state.shiftTypes.map((type) => `<option value="${type.id}" ${type.id === selectedId ? 'selected' : ''}>${escapeHtml(type.name)} · +${numberFormat.format(type.premium)} บาท</option>`).join('');
-}
-
-function updateShiftTimes(typeId) {
-  const type = state.shiftTypes.find((item) => item.id === typeId);
-  if (!type) return;
-  const form = $('#shift-form');
-  form.elements.startTime.value = type.startTime;
-  form.elements.endTime.value = type.endTime;
-}
-
 function openSheet(sheet) {
   $('#modal-backdrop').hidden = false;
   sheet.hidden = false;
@@ -401,16 +400,65 @@ function closeSheets() {
 }
 
 function openShiftSheet(date = selectedDate) {
-  const form = $('#shift-form');
-  form.reset();
-  form.elements.id.value = '';
-  form.elements.workDate.value = formatDateInput(date);
-  $('#shift-native-date').value = date;
-  $('#shift-sheet-title').textContent = 'เพิ่มเวร';
-  populateShiftTypeSelect();
-  updateShiftTimes(form.elements.shiftTypeId.value);
+  bulkMonth = new Date(fromIsoDate(date || todayIso).getFullYear(), fromIsoDate(date || todayIso).getMonth(), 1);
+  bulkActiveType = state.shiftTypes[0]?.id || DAY_OFF_TYPE;
+  bulkSelections = new Map([...state.shiftTypes.map((type) => [type.id, new Set()]), [DAY_OFF_TYPE, new Set()]]);
+  bulkSaving = false;
+  renderBulkSheet();
   openSheet($('#shift-sheet'));
-  updateOverlapWarning();
+}
+
+function bulkTypeMeta(typeId) {
+  if (typeId === DAY_OFF_TYPE) return { id: DAY_OFF_TYPE, name: 'วันหยุด', color: '#16A34A' };
+  return state.shiftTypes.find((type) => type.id === typeId);
+}
+
+function renderBulkSheet() {
+  const allTypes = [...state.shiftTypes, { id: DAY_OFF_TYPE, name: 'วันหยุด', color: '#16A34A' }];
+  $('#bulk-type-options').innerHTML = allTypes.map((type) => {
+    const count = bulkSelections.get(type.id)?.size || 0;
+    return `<button class="bulk-type-button ${type.id === bulkActiveType ? 'is-active' : ''}" style="--type-color:${type.color}" type="button" data-bulk-type="${type.id}" aria-pressed="${type.id === bulkActiveType}"><i></i><span>${escapeHtml(type.name)}</span><small>${count}</small></button>`;
+  }).join('');
+  $('#bulk-calendar-title').textContent = thaiMonthYear(bulkMonth);
+  const activeColor = bulkTypeMeta(bulkActiveType)?.color || '#A3416A';
+  $('#bulk-calendar-grid').innerHTML = calendarCells(bulkMonth).map((cell) => {
+    const activeSelected = bulkSelections.get(bulkActiveType)?.has(cell.iso);
+    const otherType = allTypes.find((type) => type.id !== bulkActiveType && bulkSelections.get(type.id)?.has(cell.iso));
+    const classes = [!cell.currentMonth && 'is-outside', cell.iso === todayIso && 'is-today', activeSelected && 'is-bulk-selected', otherType && 'has-other-selection'].filter(Boolean).join(' ');
+    return `<button class="calendar-day ${classes}" style="--selection-color:${activeColor};--other-selection-color:${otherType?.color || activeColor}" type="button" data-bulk-date="${cell.iso}" aria-pressed="${Boolean(activeSelected)}" aria-label="${formatThaiDate(cell.iso)} ${activeSelected ? 'เลือกแล้ว' : 'ยังไม่เลือก'} สำหรับ ${escapeHtml(bulkTypeMeta(bulkActiveType)?.name || 'เวร')}"><span class="day-number">${cell.day}</span></button>`;
+  }).join('');
+
+  const plan = buildBulkPlan(state, bulkSelections);
+  const previewRows = allTypes.map((type) => {
+    const dates = [...(bulkSelections.get(type.id) || [])].sort();
+    return dates.length ? `<div class="bulk-preview-row"><b>${escapeHtml(type.name)}</b><span>${dates.length} วัน · ${dates.map((date) => formatThaiDate(date)).join(', ')}</span></div>` : '';
+  }).join('');
+  const warnings = [];
+  if (plan.duplicates.length) warnings.push(`ข้ามรายการซ้ำ ${plan.duplicates.length} รายการ`);
+  if (plan.overlaps.length) warnings.push(`พบเวลาซ้อน ${plan.overlaps.length} รายการ (ระบบนับชั่วโมงช่วงซ้อนเพียงครั้งเดียว)`);
+  if (plan.dayOffShiftConflicts.length) warnings.push(`วันหยุดจะแทนที่เวรเดิม ${plan.dayOffShiftConflicts.length} วัน โดยต้องยืนยันก่อนบันทึก`);
+  if (plan.shiftDayOffConflicts.length) warnings.push(`เวรใหม่จะแทนที่วันหยุดเดิม ${plan.shiftDayOffConflicts.length} วัน โดยต้องยืนยันก่อนบันทึก`);
+  $('#bulk-preview').innerHTML = previewRows || '<span class="bulk-hint">ยังไม่ได้เลือกวันที่</span>';
+  if (warnings.length) $('#bulk-preview').insertAdjacentHTML('beforeend', `<div class="bulk-preview-warning">${warnings.map(escapeHtml).join('<br>')}</div>`);
+  const saveButton = $('#bulk-save');
+  const pendingCount = plan.shifts.length + plan.dayOffs.length;
+  saveButton.disabled = bulkSaving || pendingCount === 0;
+  saveButton.textContent = bulkSaving ? 'กำลังบันทึก…' : `บันทึกทั้งหมด${pendingCount ? ` (${pendingCount})` : ''}`;
+}
+
+function toggleBulkDate(workDate) {
+  const activeDates = bulkSelections.get(bulkActiveType);
+  if (activeDates.has(workDate)) {
+    activeDates.delete(workDate);
+  } else {
+    activeDates.add(workDate);
+    if (bulkActiveType === DAY_OFF_TYPE) {
+      state.shiftTypes.forEach((type) => bulkSelections.get(type.id).delete(workDate));
+    } else {
+      bulkSelections.get(DAY_OFF_TYPE).delete(workDate);
+    }
+  }
+  renderBulkSheet();
 }
 
 function openSpecialOtSheet(date = selectedDate, item = null) {
@@ -433,46 +481,18 @@ function openFinanceSheet() {
   openSheet($('#finance-sheet'));
 }
 
-function shiftCandidateFromForm() {
-  const form = $('#shift-form');
-  const workDate = parseDateInput(form.elements.workDate.value);
-  if (!workDate) return null;
-  return {
-    id: form.elements.id.value || null,
-    workDate,
-    shiftTypeId: form.elements.shiftTypeId.value,
-    startTime: form.elements.startTime.value,
-    endTime: form.elements.endTime.value,
-    urgentOtHours: 0,
-    note: form.elements.note.value.trim()
-  };
-}
-
-function updateOverlapWarning() {
-  const candidate = shiftCandidateFromForm();
-  const warning = $('#overlap-warning');
-  if (!candidate || !candidate.startTime || !candidate.endTime) {
-    warning.hidden = true;
-    return;
-  }
-  const overlaps = findOverlaps(candidate, state.shifts);
-  warning.hidden = overlaps.length === 0;
-  if (overlaps.length) {
-    const names = overlaps.map((shift) => state.shiftTypes.find((type) => type.id === shift.shiftTypeId)?.name || 'เวรอื่น');
-    $('#overlap-message').textContent = `ซ้อนกับ ${names.join(', ')} คุณยังบันทึกต่อได้`;
-  }
-}
-
 function bindEvents() {
   $$('[data-nav]').forEach((button) => button.addEventListener('click', () => showScreen(button.dataset.nav)));
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showScreen(button.dataset.go)));
   $('#profile-badge').addEventListener('click', () => openSettingsSection('profile'));
   $$('[data-settings-open]').forEach((button) => button.addEventListener('click', () => openSettingsSection(button.dataset.settingsOpen)));
   $('#settings-back').addEventListener('click', showSettingsMenu);
-  $$('[data-action="open-shift"]').forEach((button) => button.addEventListener('click', () => openShiftSheet(todayIso)));
+  $$('[data-action="open-shift"]').forEach((button) => button.addEventListener('click', () => {
+    showScreen('calendar');
+    openShiftSheet(selectedDate || todayIso);
+  }));
   $$('[data-action="open-special-ot"]').forEach((button) => button.addEventListener('click', () => openSpecialOtSheet(selectedDate || todayIso)));
   $$('[data-action="open-finance"]').forEach((button) => button.addEventListener('click', openFinanceSheet));
-  $$('[data-action="open-selected-shift"]').forEach((button) => button.addEventListener('click', () => openShiftSheet(selectedDate)));
   $$('[data-close-sheet]').forEach((button) => button.addEventListener('click', closeSheets));
   $('#modal-backdrop').addEventListener('click', closeSheets);
 
@@ -485,13 +505,55 @@ function bindEvents() {
     selectedDate = button.dataset.date;
     calendarMonth = new Date(fromIsoDate(selectedDate).getFullYear(), fromIsoDate(selectedDate).getMonth(), 1);
     renderCalendar();
-    openShiftSheet(selectedDate);
+  });
+
+  $('#bulk-type-options').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-bulk-type]');
+    if (!button || bulkSaving) return;
+    bulkActiveType = button.dataset.bulkType;
+    renderBulkSheet();
+  });
+  $('#bulk-calendar-grid').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-bulk-date]');
+    if (!button || bulkSaving) return;
+    toggleBulkDate(button.dataset.bulkDate);
+  });
+  $('#bulk-previous-month').addEventListener('click', () => { bulkMonth = shiftMonth(bulkMonth, -1); renderBulkSheet(); });
+  $('#bulk-next-month').addEventListener('click', () => { bulkMonth = shiftMonth(bulkMonth, 1); renderBulkSheet(); });
+  $('#bulk-save').addEventListener('click', async () => {
+    if (bulkSaving) return;
+    const plan = buildBulkPlan(state, bulkSelections);
+    if (!plan.shifts.length && !plan.dayOffs.length) {
+      showToast(plan.duplicates.length ? 'รายการที่เลือกมีอยู่แล้วทั้งหมด' : 'กรุณาเลือกอย่างน้อย 1 วัน');
+      return;
+    }
+    const conflicts = [];
+    if (plan.dayOffShiftConflicts.length) conflicts.push(`เปลี่ยน ${plan.dayOffShiftConflicts.length} วันที่มีเวรอยู่ให้เป็นวันหยุด`);
+    if (plan.shiftDayOffConflicts.length) conflicts.push(`ยกเลิกวันหยุดเดิม ${plan.shiftDayOffConflicts.length} วันเพื่อเพิ่มเวร`);
+    if (conflicts.length && !window.confirm(`${conflicts.join('\n')}\n\nOT พิเศษจะยังคงอยู่ ยืนยันดำเนินการหรือไม่?`)) return;
+    bulkSaving = true;
+    renderBulkSheet();
+    const saved = await commit(() => applyBulkPlan(state, plan), `บันทึกตาราง ${plan.shifts.length + plan.dayOffs.length} รายการแล้ว`);
+    bulkSaving = false;
+    if (saved) {
+      const dates = [...plan.shifts.map((item) => item.workDate), ...plan.dayOffs.map((item) => item.workDate)].sort();
+      if (dates[0]) selectedDate = dates[0];
+      calendarMonth = new Date(fromIsoDate(selectedDate).getFullYear(), fromIsoDate(selectedDate).getMonth(), 1);
+      closeSheets();
+    } else {
+      renderBulkSheet();
+    }
   });
 
   $('#selected-shifts').addEventListener('click', async (event) => {
     const shiftButton = event.target.closest('[data-delete-shift]');
     if (shiftButton) {
       await commit(() => { state.shifts = state.shifts.filter((shift) => shift.id !== shiftButton.dataset.deleteShift); }, 'ลบเวรแล้ว');
+      return;
+    }
+    const dayOffButton = event.target.closest('[data-delete-day-off]');
+    if (dayOffButton) {
+      await commit(() => { state.dayOffs = state.dayOffs.filter((item) => item.id !== dayOffButton.dataset.deleteDayOff); }, 'ยกเลิกวันหยุดแล้ว');
       return;
     }
     const editButton = event.target.closest('[data-edit-special-ot]');
@@ -560,20 +622,6 @@ function bindEvents() {
     }
   });
 
-  $('#shift-type-select').addEventListener('change', (event) => { updateShiftTimes(event.target.value); updateOverlapWarning(); });
-  $('#shift-form').addEventListener('input', (event) => {
-    if (event.target.name === 'workDate') {
-      event.target.value = maskDateInput(event.target.value);
-      const parsed = parseDateInput(event.target.value);
-      if (parsed) $('#shift-native-date').value = parsed;
-    }
-    updateOverlapWarning();
-  });
-  $('#shift-native-date').addEventListener('change', (event) => {
-    if (!event.target.value) return;
-    $('#shift-form').elements.workDate.value = formatDateInput(event.target.value);
-    updateOverlapWarning();
-  });
   $('#finance-form [name="workDate"]').addEventListener('input', (event) => {
     event.target.value = maskDateInput(event.target.value);
     const parsed = parseDateInput(event.target.value);
@@ -593,22 +641,6 @@ function bindEvents() {
   $('#settings-form [name="notificationsEnabled"]').addEventListener('change', (event) => {
     $('#notification-options').disabled = !event.target.checked;
     $('#settings-notification-summary').textContent = event.target.checked ? `เปิด · ${state.reminders.filter((item) => item.enabled).length} เวลา` : 'ปิดใช้งาน';
-  });
-
-  $('#shift-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const shift = shiftCandidateFromForm();
-    if (!shift) {
-      showToast('กรุณากรอกวันที่ให้ถูกต้อง เช่น 18/10/2569');
-      return;
-    }
-    shift.id = shift.id || crypto.randomUUID();
-    const saved = await commit(() => { state.shifts.push(shift); }, 'บันทึกเวรแล้ว');
-    if (saved) {
-      selectedDate = shift.workDate;
-      calendarMonth = new Date(fromIsoDate(selectedDate).getFullYear(), fromIsoDate(selectedDate).getMonth(), 1);
-      closeSheets();
-    }
   });
 
   $('#special-ot-form').addEventListener('submit', async (event) => {

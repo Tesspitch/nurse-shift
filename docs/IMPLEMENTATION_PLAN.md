@@ -2,7 +2,7 @@
 
 เอกสารนี้จัดทำจาก Repository Audit ณ วันที่ 15 ตุลาคม 2026 และใช้ `prompt.md` เป็น Requirements หลัก
 
-สถานะเอกสาร: **Audit และ Planning เท่านั้น**
+สถานะเอกสาร: **Implementation tracker — Phase 1–2 completed locally, not deployed**
 
 ข้อจำกัดของรอบงานนี้:
 
@@ -266,11 +266,11 @@ External dependencies:
 
 ## 5. Master Plan
 
-All phases are **Not Started**. Audit completion does not mark implementation complete.
+Implementation proceeds one phase at a time. Completed work remains undeployed until separate production approval.
 
 ### Phase 1 — Shift & OT Business Logic
 
-Status: **Completed locally — Not deployed**
+Status: **Committed and pushed (`d5ccc3d`) — Not deployed**
 
 Objective: establish one tested source of truth for regular hours, Normal OT, Special OT, premiums and payroll without changing confirmed business rules.
 
@@ -328,7 +328,7 @@ Gate: completed locally and stopped before Phase 2. Database migration, Edge Fun
 
 ### Phase 2 — Calendar UX/UI + Bulk Shift + Day Off
 
-Status: **Not Started**
+Status: **Completed locally — Not deployed**
 
 Dependencies: Phase 1 calculation and Special OT contracts.
 
@@ -343,6 +343,26 @@ Planned tasks:
 7. Add local loading, success and error states.
 8. Apply required accessible colors, labels, legend and mobile safe-area behavior.
 9. Add responsive E2E coverage at representative iPhone viewport sizes.
+
+Implementation result (15 October 2026):
+
+- Added a dedicated per-user `day_offs` model with one Day Off per date, RLS enabled and direct browser-role access revoked.
+- Kept Day Off outside payroll shifts, so it contributes zero regular hours, Normal OT, premium and salary deduction.
+- Added a four-category bulk flow for configured shift types plus Day Off with multi-date selection and retained selections while switching categories.
+- Added a live preview, duplicate skipping, overlap warnings, explicit shift/Day Off replacement confirmation and double-submit protection.
+- Changed calendar date taps to select and show details only; adding now starts from the bottom action.
+- Added required calendar colors, Day Off indicators, expanded text labels, mobile safe-area behavior and accessible state labels.
+- Made batch persistence one full-state transaction; the UI renders saved data only after backend confirmation and restores state on failure.
+- Preserved Special OT when replacing shifts with Day Off and added cancel/delete Day Off behavior.
+- Updated CSV and backup/restore compatibility and migrated legacy local state safely.
+
+Verification result:
+
+- Unit tests: 17 passed, 0 failed.
+- Mobile Chrome E2E: 2 passed, 0 failed, including Phase 1 regression.
+- Vite production build: passed.
+- Supabase migration dry-run: passed; migrations 003 and 004 are pending and were not applied.
+- Database, Edge Functions, frontend and production configuration have not been deployed.
 
 Likely affected files after approval:
 
@@ -565,8 +585,8 @@ Gate: produce the final readiness report; deployment remains a separate user-app
 
 | Phase | Status | Blocking dependency | Evidence required to complete |
 |---|---|---|---|
-| 1. Shift & OT Business Logic | Completed locally; not deployed | Deployment approval remains separate | 13 unit tests, 1 mobile E2E, build and migration dry-run passed |
-| 2. Calendar + Bulk + Day Off | Not Started | Phase 1 model | Mobile E2E and Day Off calculation tests |
+| 1. Shift & OT Business Logic | Committed and pushed; not deployed | Deployment approval remains separate | 13 unit tests, 1 mobile E2E, build and migration dry-run passed |
+| 2. Calendar + Bulk + Day Off | Completed locally; not deployed | Deployment approval remains separate | 17 unit tests, 2 mobile E2E, build and migration dry-run passed |
 | 3. Historical Data | Not Started | Phases 1–2 | Month API/cache and three-month E2E |
 | 4. Rich Menu Page 2 + Bot | Not Started | Phases 1–3 and LINE console audit | Signature/security tests and controlled LINE verification |
 | 5. Notification Scheduling V2 | Not Started | Task 5.1 audit and architecture approval | 20-case verification, metrics and rollback |
@@ -583,21 +603,13 @@ Resolved in Phase 1:
 
 Remaining decisions:
 
-1. Select a Day Off representation during the Phase 2 audit.
-2. Confirm a Rich Menu page-switch entry point after inspecting the actual LINE menu layout.
-3. Select a Phase 5 scheduler only after real metrics and cost evaluation.
-4. Determine the isolated environment and test identities available for connected backend and LINE E2E tests.
-5. `README.md` references `.env.example`, but no tracked `.env.example` was found in the audit inventory.
+1. Confirm a Rich Menu page-switch entry point after inspecting the actual LINE menu layout.
+2. Select a Phase 5 scheduler only after real metrics and cost evaluation.
+3. Determine the isolated environment and test identities available for connected backend and LINE E2E tests.
+4. `README.md` references `.env.example`, but no tracked `.env.example` was found in the audit inventory.
 
 ## 8. Next Step
 
-Wait for explicit authorization to begin **Phase 2 — Calendar UX/UI + Bulk Shift + Day Off**.
-
-Before Phase 2 implementation:
-
-1. Re-audit the completed Phase 1 state and pending migration.
-2. Present the proposed Day Off representation and batch-save contract.
-3. List exact files, migrations and E2E scenarios to change.
-4. Do not deploy the pending Phase 1 work unless the user separately authorizes deployment.
+Complete Phase 2 verification, commit it as `phase 2 optimize`, push it to GitHub, then wait for explicit authorization to begin **Phase 3 — Historical Data**.
 
 No deployment is included in any implementation step unless the user separately authorizes it.

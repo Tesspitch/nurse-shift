@@ -17,6 +17,9 @@ export function createCsv(state, payroll) {
     ...payroll.specialOtItems.map((item) => [
       'OT พิเศษ', item.workDate, 'OT พิเศษ', '', '', item.hours, '', item.note || ''
     ]),
+    ...(state.dayOffs || []).map((item) => [
+      'วันหยุด', item.workDate, 'วันหยุด', '', '', '', '', ''
+    ]),
     ...payroll.items.map((item) => [
       item.kind === 'deduction' ? 'รายการหัก' : 'รายรับ', item.workDate, item.label, '', '', '',
       item.kind === 'deduction' ? -Number(item.amount) : Number(item.amount), ''
@@ -30,13 +33,14 @@ export function createCsv(state, payroll) {
 export function createBackup(state) {
   return {
     format: 'nurseshift-backup',
-    formatVersion: 2,
+    formatVersion: 3,
     exportedAt: new Date().toISOString(),
     data: {
       settings: structuredClone(state.settings),
       shiftTypes: structuredClone(state.shiftTypes),
       shifts: structuredClone(state.shifts),
       specialOtItems: structuredClone(state.specialOtItems || []),
+      dayOffs: structuredClone(state.dayOffs || []),
       financialItems: structuredClone(state.financialItems),
       reminders: structuredClone(state.reminders)
     }
@@ -50,7 +54,7 @@ function validDate(value) {
 }
 
 export function restoreBackup(currentState, input) {
-  if (!input || input.format !== 'nurseshift-backup' || ![1, 2].includes(input.formatVersion) || !input.data) {
+  if (!input || input.format !== 'nurseshift-backup' || ![1, 2, 3].includes(input.formatVersion) || !input.data) {
     throw new Error('ไฟล์นี้ไม่ใช่ข้อมูลสำรองของ NurseShift');
   }
   const data = input.data;
@@ -83,6 +87,11 @@ export function restoreBackup(currentState, input) {
       || Number(item.hours) > 24 || typeof item.note !== 'string' || item.note.length > 120)) {
     throw new Error('รายการ OT พิเศษในไฟล์ไม่ถูกต้อง');
   }
+  const dayOffs = Array.isArray(data.dayOffs) ? structuredClone(data.dayOffs) : [];
+  if (dayOffs.length > 5000 || new Set(dayOffs.map((item) => item.workDate)).size !== dayOffs.length
+      || dayOffs.some((item) => typeof item.id !== 'string' || !validDate(item.workDate))) {
+    throw new Error('รายการวันหยุดในไฟล์ไม่ถูกต้อง');
+  }
   if (data.financialItems.some((item) => !['income', 'deduction'].includes(item.kind)
       || !validDate(item.workDate) || Number(item.amount) < 0)) throw new Error('รายการการเงินในไฟล์ไม่ถูกต้อง');
   if (data.reminders.some((reminder) => !Number.isInteger(Number(reminder.offsetMinutes))
@@ -95,6 +104,7 @@ export function restoreBackup(currentState, input) {
     shiftTypes: structuredClone(data.shiftTypes),
     shifts: structuredClone(data.shifts).map((shift) => ({ ...shift, urgentOtHours: 0 })),
     specialOtItems,
+    dayOffs,
     financialItems: structuredClone(data.financialItems),
     reminders: structuredClone(data.reminders)
   };

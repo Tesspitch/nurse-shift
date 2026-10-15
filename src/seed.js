@@ -14,12 +14,13 @@ export function createInitialState() {
       notificationsEnabled: true
     },
     shiftTypes: [
-      { id: 'morning', name: 'เวรเช้า', startTime: '08:00', endTime: '16:00', premium: 0, color: '#B7791F' },
-      { id: 'evening', name: 'เวรบ่าย', startTime: '16:00', endTime: '00:00', premium: 200, color: '#9B285B' },
-      { id: 'night', name: 'เวรดึก', startTime: '00:00', endTime: '08:00', premium: 300, color: '#3559A8' }
+      { id: 'morning', name: 'เวรเช้า', startTime: '08:00', endTime: '16:00', premium: 0, color: '#F59E0B' },
+      { id: 'evening', name: 'เวรบ่าย', startTime: '16:00', endTime: '00:00', premium: 200, color: '#8B5CF6' },
+      { id: 'night', name: 'เวรดึก', startTime: '00:00', endTime: '08:00', premium: 300, color: '#2563EB' }
     ],
     shifts: [],
     specialOtItems: [],
+    dayOffs: [],
     financialItems: [],
     reminders: [
       { id: 'one-day', offsetMinutes: 1440, enabled: true },
