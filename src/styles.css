@@ -324,6 +324,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .bulk-calendar-toolbar strong { text-align: center; font-size: 14px; }
 .bulk-calendar-card { padding: 7px 5px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-soft); }
 .bulk-calendar-grid .calendar-day { min-height: 43px; }
+.bulk-calendar-grid .day-labels { display: grid; }
+.bulk-calendar-grid .day-labels span { padding-inline: 1px; font-size: 6px; }
 .bulk-calendar-grid .calendar-day.is-bulk-selected .day-number { color: white; background: var(--selection-color, var(--pink-700)); box-shadow: 0 3px 10px color-mix(in srgb, var(--selection-color, var(--pink-700)) 28%, transparent); }
 .bulk-calendar-grid .calendar-day.has-other-selection::after { position: absolute; right: 4px; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--other-selection-color, var(--pink-500)); content: ''; }
 .bulk-hint { display: block; margin-top: 7px; color: var(--ink-600); line-height: 1.5; }

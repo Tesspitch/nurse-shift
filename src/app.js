@@ -539,11 +539,22 @@ function renderBulkSheet() {
   }).join('');
   $('#bulk-calendar-title').textContent = thaiMonthYear(bulkMonth);
   const activeColor = bulkTypeMeta(bulkActiveType)?.color || '#A3416A';
+  const shiftsByDate = state.shifts.reduce((groups, shift) => {
+    if (!groups.has(shift.workDate)) groups.set(shift.workDate, []);
+    groups.get(shift.workDate).push(shift);
+    return groups;
+  }, new Map());
+  const dayOffDates = new Set((state.dayOffs || []).map((item) => item.workDate));
   $('#bulk-calendar-grid').innerHTML = calendarCells(bulkMonth).map((cell) => {
     const activeSelected = bulkSelections.get(bulkActiveType)?.has(cell.iso);
     const otherType = allTypes.find((type) => type.id !== bulkActiveType && bulkSelections.get(type.id)?.has(cell.iso));
-    const classes = [!cell.currentMonth && 'is-outside', cell.iso === todayIso && 'is-today', activeSelected && 'is-bulk-selected', otherType && 'has-other-selection'].filter(Boolean).join(' ');
-    return `<button class="calendar-day ${classes}" style="--selection-color:${activeColor};--other-selection-color:${otherType?.color || activeColor}" type="button" data-bulk-date="${cell.iso}" aria-pressed="${Boolean(activeSelected)}" aria-label="${formatThaiDate(cell.iso)} ${activeSelected ? 'เลือกแล้ว' : 'ยังไม่เลือก'} สำหรับ ${escapeHtml(bulkTypeMeta(bulkActiveType)?.name || 'เวร')}"><span class="day-number">${cell.day}</span></button>`;
+    const existingShifts = shiftsByDate.get(cell.iso) || [];
+    const existingTypes = existingShifts.map((shift) => state.shiftTypes.find((type) => type.id === shift.shiftTypeId)).filter(Boolean);
+    const isDayOff = dayOffDates.has(cell.iso);
+    const existingLabels = `${existingTypes.map((type) => `<span style="--dot-color:${type.color}">${escapeHtml(type.name.replace('เวร', ''))}</span>`).join('')}${isDayOff ? '<span style="--dot-color:#16A34A">หยุด</span>' : ''}`;
+    const existingDescription = `${existingTypes.length ? ` มี ${existingTypes.map((type) => type.name).join(' และ')}` : ''}${isDayOff ? ' เป็นวันหยุด' : ''}`;
+    const classes = [!cell.currentMonth && 'is-outside', cell.iso === todayIso && 'is-today', activeSelected && 'is-bulk-selected', otherType && 'has-other-selection', existingTypes.length && 'has-existing-shifts', isDayOff && 'has-existing-day-off'].filter(Boolean).join(' ');
+    return `<button class="calendar-day ${classes}" style="--selection-color:${activeColor};--other-selection-color:${otherType?.color || activeColor}" type="button" data-bulk-date="${cell.iso}" aria-pressed="${Boolean(activeSelected)}" aria-label="${formatThaiDate(cell.iso)}${existingDescription} ${activeSelected ? 'เลือกแล้ว' : 'ยังไม่เลือก'} สำหรับ ${escapeHtml(bulkTypeMeta(bulkActiveType)?.name || 'เวร')}"><span class="day-number">${cell.day}</span><span class="day-labels">${existingLabels}</span></button>`;
   }).join('');
 
   const plan = buildBulkPlan(state, bulkSelections);

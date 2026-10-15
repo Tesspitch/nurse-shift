@@ -54,6 +54,8 @@ test('calendar details, bulk shifts and day off work on mobile', async ({ page }
   await expect(page.locator('#selected-shifts')).toContainText('0 ชั่วโมง');
 
   await page.locator('.calendar-primary-actions [data-action="open-shift"]').click();
+  await expect(page.locator('#bulk-calendar-grid [data-bulk-date="2026-10-01"] .day-labels')).toContainText('เช้า');
+  await expect(page.locator('#bulk-calendar-grid [data-bulk-date="2026-10-04"] .day-labels')).toContainText('หยุด');
   await page.locator('[data-bulk-type="morning"]').click();
   await page.locator('[data-bulk-date="2026-10-01"]').click();
   await expect(page.locator('#bulk-preview')).toContainText('ข้ามรายการซ้ำ');
