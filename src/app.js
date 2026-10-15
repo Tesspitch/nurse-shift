@@ -296,9 +296,11 @@ function renderSettings() {
   $('#shift-type-settings').innerHTML = state.shiftTypes.map((type) => `
     <div class="shift-type-setting" data-type-id="${type.id}">
       <div class="type-name"><i style="--type-color:${type.color}"></i>${escapeHtml(type.name)}</div>
-      <label class="field"><span>เริ่ม</span><input type="time" data-type-field="startTime" value="${type.startTime}"></label>
-      <label class="field"><span>สิ้นสุด</span><input type="time" data-type-field="endTime" value="${type.endTime}"></label>
-      <label class="field"><span>ค่าเพิ่ม (บาท)</span><input type="number" min="0" data-type-field="premium" value="${type.premium}" inputmode="decimal"></label>
+      <div class="shift-type-fields">
+        <label class="field"><span>เวลาเริ่ม</span><input type="time" data-type-field="startTime" value="${type.startTime}"></label>
+        <label class="field"><span>เวลาสิ้นสุด</span><input type="time" data-type-field="endTime" value="${type.endTime}"></label>
+        <label class="field"><span>ค่าเพิ่มต่อเวร</span><span class="input-affix"><input type="number" min="0" data-type-field="premium" value="${type.premium}" inputmode="decimal"><b>บาท</b></span></label>
+      </div>
     </div>`).join('');
   $('#reminder-settings').innerHTML = state.reminders.length
     ? state.reminders.map((reminder) => `<div class="reminder-row"><span>${reminderLabel(reminder.offsetMinutes)}</span><span class="reminder-controls"><label class="switch" aria-label="${reminder.enabled ? 'ปิด' : 'เปิด'} ${reminderLabel(reminder.offsetMinutes)}"><input type="checkbox" data-reminder-id="${reminder.id}" ${reminder.enabled ? 'checked' : ''}><i></i></label><button class="delete-button" type="button" data-delete-reminder="${reminder.id}" aria-label="ลบ ${reminderLabel(reminder.offsetMinutes)}"><svg><use href="#i-trash"/></svg></button></span></div>`).join('')

@@ -50,7 +50,7 @@ test('shows exactly three Bangkok calendar months and refreshes cached history',
   await expect(page.locator('#history-day-off-total')).toHaveText('1 วัน');
 
   await page.getByRole('button', { name: 'กลับไปปฏิทิน' }).click();
-  await page.locator('.calendar-add-action').click();
+  await page.locator('.calendar-primary-actions [data-action="open-shift"]').click();
   await page.locator('[data-bulk-type="morning"]').click();
   await page.locator('[data-bulk-date="2026-10-02"]').click();
   await page.locator('#bulk-save').click();

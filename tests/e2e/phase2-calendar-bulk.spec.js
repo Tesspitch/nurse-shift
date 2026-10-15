@@ -28,7 +28,11 @@ test('calendar details, bulk shifts and day off work on mobile', async ({ page }
   await expect(page.locator('#shift-sheet')).toBeHidden();
   await expect(page.locator('#selected-date-title')).toContainText('5');
 
-  await page.locator('.calendar-add-action').click();
+  await page.locator('.calendar-primary-actions [data-action="open-special-ot"]').click();
+  await expect(page.locator('#special-ot-form [name="workDate"]')).toHaveValue('05/10/2569');
+  await page.locator('#special-ot-sheet [data-close-sheet]').click();
+
+  await page.locator('.calendar-primary-actions [data-action="open-shift"]').click();
   await page.locator('[data-bulk-type="morning"]').click();
   await page.locator('[data-bulk-date="2026-10-01"]').click();
   await page.locator('[data-bulk-date="2026-10-02"]').click();
@@ -49,7 +53,7 @@ test('calendar details, bulk shifts and day off work on mobile', async ({ page }
   await page.locator('#calendar-grid [data-date="2026-10-04"]').click();
   await expect(page.locator('#selected-shifts')).toContainText('0 ชั่วโมง');
 
-  await page.locator('.calendar-add-action').click();
+  await page.locator('.calendar-primary-actions [data-action="open-shift"]').click();
   await page.locator('[data-bulk-type="morning"]').click();
   await page.locator('[data-bulk-date="2026-10-01"]').click();
   await expect(page.locator('#bulk-preview')).toContainText('ข้ามรายการซ้ำ');
@@ -59,7 +63,7 @@ test('calendar details, bulk shifts and day off work on mobile', async ({ page }
   await page.locator('#selected-shifts [data-delete-day-off]').click();
   await expect(page.locator('#selected-shifts')).toContainText('วันนี้ยังไม่มีรายการ');
 
-  await page.locator('.calendar-add-action').click();
+  await page.locator('.calendar-primary-actions [data-action="open-shift"]').click();
   await page.locator('[data-bulk-type="day-off"]').click();
   await page.locator('[data-bulk-date="2026-10-02"]').click();
   page.once('dialog', (dialog) => dialog.dismiss());
@@ -77,7 +81,7 @@ test('calendar details, bulk shifts and day off work on mobile', async ({ page }
   await specialForm.locator('[name="note"]').fill('เคสด่วนยังต้องคงอยู่');
   await specialForm.getByRole('button', { name: 'บันทึก OT พิเศษ' }).click();
   await page.locator('[data-nav="calendar"]').click();
-  await page.locator('.calendar-add-action').click();
+  await page.locator('.calendar-primary-actions [data-action="open-shift"]').click();
   await page.locator('[data-bulk-type="day-off"]').click();
   await page.locator('[data-bulk-date="2026-10-01"]').click();
   page.once('dialog', (dialog) => dialog.accept());
@@ -85,6 +89,16 @@ test('calendar details, bulk shifts and day off work on mobile', async ({ page }
   await page.locator('#calendar-grid [data-date="2026-10-01"]').click();
   await expect(page.locator('#selected-shifts')).toContainText('วันหยุด');
   await expect(page.locator('#selected-shifts')).toContainText('เคสด่วนยังต้องคงอยู่');
+
+  await page.locator('[data-nav="settings"]').click();
+  await page.locator('[data-settings-open="shift-types"]').click();
+  const fieldBoxes = await page.locator('.shift-type-setting').first().locator('.field').evaluateAll((fields) => fields.map((field) => {
+    const box = field.getBoundingClientRect();
+    return { top: box.top, bottom: box.bottom, left: box.left, right: box.right };
+  }));
+  expect(fieldBoxes[1].top).toBeGreaterThanOrEqual(fieldBoxes[0].bottom);
+  expect(fieldBoxes[2].top).toBeGreaterThanOrEqual(fieldBoxes[1].bottom);
+  expect(fieldBoxes.every((box) => box.left >= 0 && box.right <= page.viewportSize().width)).toBe(true);
 
   const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   expect(hasHorizontalOverflow).toBe(false);
