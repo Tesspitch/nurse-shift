@@ -1,0 +1,40 @@
+{
+  "size": { "width": 2500, "height": 1686 },
+  "selected": true,
+  "name": "NurseShift main menu",
+  "chatBarText": "เมนู NurseShift",
+  "areas": [
+    {
+      "bounds": { "x": 0, "y": 0, "width": 1500, "height": 1686 },
+      "action": {
+        "type": "uri",
+        "label": "ภาพรวม",
+        "uri": "https://liff.line.me/2012030979-CQQzGFWo/?screen=home"
+      }
+    },
+    {
+      "bounds": { "x": 1500, "y": 0, "width": 1000, "height": 562 },
+      "action": {
+        "type": "uri",
+        "label": "เพิ่มเวร",
+        "uri": "https://liff.line.me/2012030979-CQQzGFWo/?action=add-shift"
+      }
+    },
+    {
+      "bounds": { "x": 1500, "y": 562, "width": 1000, "height": 562 },
+      "action": {
+        "type": "uri",
+        "label": "ตารางเวร",
+        "uri": "https://liff.line.me/2012030979-CQQzGFWo/?screen=calendar"
+      }
+    },
+    {
+      "bounds": { "x": 1500, "y": 1124, "width": 1000, "height": 562 },
+      "action": {
+        "type": "uri",
+        "label": "ตั้งค่า",
+        "uri": "https://liff.line.me/2012030979-CQQzGFWo/?screen=settings"
+      }
+    }
+  ]
+}

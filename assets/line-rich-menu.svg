@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2500" height="1686" viewBox="0 0 2500 1686">
+  <defs>
+    <linearGradient id="main" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F9CCDC"/>
+      <stop offset="0.62" stop-color="#F7DFE8"/>
+      <stop offset="1" stop-color="#EEE3F6"/>
+    </linearGradient>
+    <linearGradient id="add" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF4F7"/>
+      <stop offset="1" stop-color="#F8DDE8"/>
+    </linearGradient>
+    <linearGradient id="calendar" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F8F1FB"/>
+      <stop offset="1" stop-color="#EDE4F6"/>
+    </linearGradient>
+    <linearGradient id="settings" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF6F2"/>
+      <stop offset="1" stop-color="#F7E3DF"/>
+    </linearGradient>
+    <pattern id="dots" width="54" height="54" patternUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="3" fill="#A3416A" opacity="0.11"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#713950" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <rect width="2500" height="1686" fill="#FFF8FA"/>
+  <rect x="34" y="34" width="1432" height="1618" rx="62" fill="url(#main)" filter="url(#shadow)"/>
+  <rect x="34" y="34" width="1432" height="1618" rx="62" fill="url(#dots)"/>
+
+  <circle cx="750" cy="478" r="168" fill="#FFFFFF" opacity="0.62"/>
+  <circle cx="750" cy="478" r="119" fill="#FFFFFF" opacity="0.92"/>
+  <g transform="translate(662 390)" fill="none" stroke="#A3416A" stroke-width="27" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M88 16v144M16 88h144"/>
+    <path d="M8 8h160v160H8z" opacity="0.18"/>
+  </g>
+
+  <text x="750" y="760" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="98" font-weight="700" fill="#4B2B39">NurseShift</text>
+  <text x="750" y="880" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="58" font-weight="600" fill="#775160">ตารางเวรและรายได้ของฉัน</text>
+  <text x="750" y="963" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="38" font-weight="400" fill="#846B76">ดูภาพรวมของรอบปัจจุบันได้ในที่เดียว</text>
+  <rect x="397" y="1134" width="706" height="164" rx="82" fill="#A3416A"/>
+  <text x="750" y="1239" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="56" font-weight="700" fill="#FFFFFF">เปิดภาพรวม</text>
+  <text x="750" y="1422" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="32" font-weight="600" letter-spacing="2" fill="#8D345B">แตะเพื่อเข้าสู่ระบบ</text>
+
+  <rect x="1500" y="34" width="966" height="519" rx="62" fill="url(#add)" filter="url(#shadow)"/>
+  <rect x="1500" y="584" width="966" height="518" rx="62" fill="url(#calendar)" filter="url(#shadow)"/>
+  <rect x="1500" y="1134" width="966" height="518" rx="62" fill="url(#settings)" filter="url(#shadow)"/>
+
+  <g transform="translate(1606 173)" fill="none" stroke="#A3416A" stroke-width="24" stroke-linecap="round">
+    <circle cx="118" cy="118" r="112" fill="#FFFFFF" opacity="0.74" stroke="none"/>
+    <path d="M118 61v114M61 118h114"/>
+  </g>
+  <text x="1905" y="266" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="70" font-weight="700" fill="#432533">เพิ่มเวร</text>
+  <text x="1905" y="343" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="35" font-weight="400" fill="#7C626D">บันทึกเวรของวันนี้</text>
+
+  <g transform="translate(1606 723)" fill="none" stroke="#80629A" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="118" cy="118" r="112" fill="#FFFFFF" opacity="0.74" stroke="none"/>
+    <rect x="51" y="61" width="134" height="126" rx="17"/>
+    <path d="M51 102h134M84 42v38M152 42v38"/>
+    <path d="M84 134h1M118 134h1M152 134h1M84 164h1M118 164h1M152 164h1" stroke-width="18"/>
+  </g>
+  <text x="1905" y="816" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="70" font-weight="700" fill="#432533">ตารางเวร</text>
+  <text x="1905" y="893" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="35" font-weight="400" fill="#71657C">ดูปฏิทินเวรทั้งหมด</text>
+
+  <g transform="translate(1606 1273)" fill="none" stroke="#A45C62" stroke-width="21" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="118" cy="118" r="112" fill="#FFFFFF" opacity="0.74" stroke="none"/>
+    <circle cx="118" cy="118" r="35"/>
+    <path d="M118 51v19M118 166v19M51 118h19M166 118h19M71 71l14 14M151 151l14 14M165 71l-14 14M85 151l-14 14"/>
+  </g>
+  <text x="1905" y="1366" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="70" font-weight="700" fill="#432533">ตั้งค่า</text>
+  <text x="1905" y="1443" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="35" font-weight="400" fill="#796568">ปรับอัตราและรอบเงินเดือน</text>
+</svg>

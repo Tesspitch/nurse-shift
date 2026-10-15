@@ -11,6 +11,7 @@ import {
   toIsoDate
 } from './date.js';
 import { createService } from './service.js';
+import { readNavigationIntent } from './navigation.js';
 
 const numberFormat = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 });
 const currencyFormat = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -22,6 +23,7 @@ let state;
 let dataService;
 let serviceMode = 'local';
 let toastTimer;
+let pendingNavigation = null;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -221,12 +223,26 @@ const screenMeta = {
 };
 
 function showScreen(name) {
+  if (!screenMeta[name]) return;
   $$('.screen').forEach((screen) => screen.classList.toggle('is-active', screen.dataset.screen === name));
   $$('[data-nav]').forEach((button) => button.classList.toggle('is-active', button.dataset.nav === name));
   const [eyebrow, title] = screenMeta[name];
   $('#screen-eyebrow').textContent = eyebrow;
   $('#screen-title').textContent = title;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function applyNavigationIntent() {
+  if (!pendingNavigation || !state.settings.onboardingComplete) return;
+
+  if (pendingNavigation.action === 'add-shift') {
+    showScreen('calendar');
+    openShiftSheet(todayIso);
+  } else if (pendingNavigation.screen) {
+    showScreen(pendingNavigation.screen);
+  }
+
+  pendingNavigation = null;
 }
 
 function populateShiftTypeSelect(selectedId = state.shiftTypes[0]?.id) {
@@ -414,6 +430,7 @@ function bindEvents() {
     if (saved) {
       $('#onboarding').hidden = true;
       $('#app-shell').hidden = false;
+      applyNavigationIntent();
       showToast('ตั้งค่าเรียบร้อย เริ่มเพิ่มเวรได้เลย');
     }
   });
@@ -428,12 +445,16 @@ async function initialize() {
   bindEvents();
   try {
     const result = await createService();
+    pendingNavigation = readNavigationIntent(window.location.search);
     dataService = result.service;
     serviceMode = result.mode;
     state = await dataService.bootstrap();
     renderAll();
     $('#loading').hidden = true;
-    if (state.settings.onboardingComplete) $('#app-shell').hidden = false;
+    if (state.settings.onboardingComplete) {
+      $('#app-shell').hidden = false;
+      applyNavigationIntent();
+    }
     else $('#onboarding').hidden = false;
   } catch (error) {
     $('#loading').innerHTML = `<div class="empty-card"><b>เปิดระบบไม่สำเร็จ</b><span>${escapeHtml(error.message)}</span></div>`;
