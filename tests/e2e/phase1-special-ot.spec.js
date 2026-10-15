@@ -29,6 +29,24 @@ async function addShift(page, { type }) {
   await expect(page.locator('#shift-sheet')).toBeHidden();
 }
 
+test('shows newly added special OT on its selected calendar date', async ({ page }) => {
+  await completeOnboarding(page);
+
+  await page.locator('[data-action="open-special-ot"]:visible').click();
+  const specialForm = page.locator('#special-ot-form');
+  await specialForm.locator('[name="workDate"]').fill('05/11/2569');
+  await specialForm.locator('[name="hours"]').fill('2');
+  await specialForm.locator('[name="note"]').fill('OT เดือนถัดไป');
+  await specialForm.getByRole('button', { name: 'บันทึก OT พิเศษ' }).click();
+  await expect(page.locator('#special-ot-sheet')).toBeHidden();
+
+  await page.locator('[data-nav="calendar"]').click();
+  await expect(page.locator('#calendar-title')).toContainText('พฤศจิกายน 2569');
+  await expect(page.locator('#calendar-grid [data-date="2026-11-05"]')).toContainText('OT');
+  await expect(page.locator('#selected-date-title')).toContainText('5');
+  await expect(page.locator('#selected-shifts')).toContainText('OT เดือนถัดไป');
+});
+
 test('manages independent special OT with the bulk shift flow', async ({ page }) => {
   await completeOnboarding(page);
 

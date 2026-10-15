@@ -752,6 +752,7 @@ function bindEvents() {
     if (saved) {
       selectedDate = workDate;
       calendarMonth = new Date(fromIsoDate(workDate).getFullYear(), fromIsoDate(workDate).getMonth(), 1);
+      renderCalendar();
       closeSheets();
     }
   });
