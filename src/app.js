@@ -59,19 +59,23 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2400);
 }
 
-async function withButtonLoading(button, loadingText, action) {
+async function withButtonLoading(button, loadingText, action, compact = false) {
   if (button.getAttribute('aria-busy') === 'true') return false;
   const originalContent = button.innerHTML;
+  const originalLabel = button.getAttribute('aria-label');
   const wasDisabled = button.disabled;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  button.innerHTML = `<span class="button-spinner" aria-hidden="true"></span>${escapeHtml(loadingText)}`;
+  button.innerHTML = `<span class="button-spinner" aria-hidden="true"></span>${compact ? '' : escapeHtml(loadingText)}`;
+  if (compact) button.setAttribute('aria-label', loadingText);
   try {
     return await action();
   } finally {
     button.innerHTML = originalContent;
     button.disabled = wasDisabled;
     button.removeAttribute('aria-busy');
+    if (originalLabel === null) button.removeAttribute('aria-label');
+    else button.setAttribute('aria-label', originalLabel);
   }
 }
 
@@ -83,7 +87,7 @@ function currentPayroll() {
   return calculatePayroll(state, new Date());
 }
 
-async function commit(change, successMessage, button) {
+async function commit(change, successMessage, button, compact = false) {
   if (commitInProgress) {
     showToast('กำลังบันทึก กรุณารอสักครู่');
     return false;
@@ -114,7 +118,7 @@ async function commit(change, successMessage, button) {
       commitInProgress = false;
     }
   };
-  return button ? withButtonLoading(button, 'กำลังบันทึก…', save) : save();
+  return button ? withButtonLoading(button, 'กำลังบันทึก…', save, compact) : save();
 }
 
 function setProfile() {
@@ -671,12 +675,12 @@ function bindEvents() {
   $('#selected-shifts').addEventListener('click', async (event) => {
     const shiftButton = event.target.closest('[data-delete-shift]');
     if (shiftButton) {
-      await commit(() => { state.shifts = state.shifts.filter((shift) => shift.id !== shiftButton.dataset.deleteShift); }, 'ลบเวรแล้ว', shiftButton);
+      await commit(() => { state.shifts = state.shifts.filter((shift) => shift.id !== shiftButton.dataset.deleteShift); }, 'ลบเวรแล้ว', shiftButton, true);
       return;
     }
     const dayOffButton = event.target.closest('[data-delete-day-off]');
     if (dayOffButton) {
-      await commit(() => { state.dayOffs = state.dayOffs.filter((item) => item.id !== dayOffButton.dataset.deleteDayOff); }, 'ยกเลิกวันหยุดแล้ว', dayOffButton);
+      await commit(() => { state.dayOffs = state.dayOffs.filter((item) => item.id !== dayOffButton.dataset.deleteDayOff); }, 'ยกเลิกวันหยุดแล้ว', dayOffButton, true);
       return;
     }
     const editButton = event.target.closest('[data-edit-special-ot]');
@@ -685,12 +689,12 @@ function bindEvents() {
       return;
     }
     const deleteButton = event.target.closest('[data-delete-special-ot]');
-    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว', deleteButton);
+    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว', deleteButton, true);
   });
   $('#financial-items').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-delete-item]');
     if (!button) return;
-    await commit(() => { state.financialItems = state.financialItems.filter((item) => item.id !== button.dataset.deleteItem); }, 'ลบรายการแล้ว', button);
+    await commit(() => { state.financialItems = state.financialItems.filter((item) => item.id !== button.dataset.deleteItem); }, 'ลบรายการแล้ว', button, true);
   });
   $('#special-ot-items').addEventListener('click', async (event) => {
     const editButton = event.target.closest('[data-edit-special-ot]');
@@ -700,12 +704,12 @@ function bindEvents() {
       return;
     }
     const deleteButton = event.target.closest('[data-delete-special-ot]');
-    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว', deleteButton);
+    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว', deleteButton, true);
   });
   $('#reminder-settings').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-delete-reminder]');
     if (!button) return;
-    await commit(() => { state.reminders = state.reminders.filter((reminder) => reminder.id !== button.dataset.deleteReminder); }, 'ลบเวลาแจ้งเตือนแล้ว', button);
+    await commit(() => { state.reminders = state.reminders.filter((reminder) => reminder.id !== button.dataset.deleteReminder); }, 'ลบเวลาแจ้งเตือนแล้ว', button, true);
   });
 
   $('#add-reminder').addEventListener('click', async (event) => {
