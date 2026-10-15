@@ -1,0 +1,15 @@
+{
+  "size": { "width": 2500, "height": 1686 },
+  "selected": true,
+  "name": "NurseShift Quick Info",
+  "chatBarText": "ข้อมูลด่วน",
+  "areas": [
+    { "bounds": { "x": 0, "y": 0, "width": 2500, "height": 240 }, "action": { "type": "richmenuswitch", "label": "กลับหน้าหลัก", "richMenuAliasId": "nurseshift-main", "data": "action=switch_main" } },
+    { "bounds": { "x": 0, "y": 240, "width": 833, "height": 723 }, "action": { "type": "postback", "label": "เวรถัดไป", "data": "action=next_shift", "displayText": "เวรถัดไป" } },
+    { "bounds": { "x": 833, "y": 240, "width": 834, "height": 723 }, "action": { "type": "postback", "label": "รายได้เดือนนี้", "data": "action=monthly_income", "displayText": "รายได้เดือนนี้" } },
+    { "bounds": { "x": 1667, "y": 240, "width": 833, "height": 723 }, "action": { "type": "postback", "label": "สรุป OT", "data": "action=ot_summary", "displayText": "สรุป OT" } },
+    { "bounds": { "x": 0, "y": 963, "width": 833, "height": 723 }, "action": { "type": "postback", "label": "วันหยุด", "data": "action=day_off", "displayText": "วันหยุดเดือนนี้" } },
+    { "bounds": { "x": 833, "y": 963, "width": 834, "height": 723 }, "action": { "type": "postback", "label": "สรุปเวรเดือนนี้", "data": "action=monthly_shifts", "displayText": "สรุปเวรเดือนนี้" } },
+    { "bounds": { "x": 1667, "y": 963, "width": 833, "height": 723 }, "action": { "type": "postback", "label": "วิธีใช้งาน", "data": "action=help", "displayText": "วิธีใช้งาน NurseShift" } }
+  ]
+}

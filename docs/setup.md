@@ -18,6 +18,7 @@ supabase link --project-ref YOUR_PROJECT_REF
 supabase db push
 supabase functions deploy app-api
 supabase functions deploy send-reminders
+supabase functions deploy line-webhook
 ```
 
 ตั้งค่า Edge Function secrets โดยกรอกค่าจริงจากเครื่องของเจ้าของระบบ:
@@ -25,12 +26,17 @@ supabase functions deploy send-reminders
 ```bash
 supabase secrets set LINE_LOGIN_CHANNEL_ID=YOUR_LINE_LOGIN_CHANNEL_ID
 supabase secrets set LINE_CHANNEL_ACCESS_TOKEN=YOUR_MESSAGING_API_CHANNEL_ACCESS_TOKEN
+supabase secrets set LINE_MESSAGING_CHANNEL_SECRET=YOUR_MESSAGING_API_CHANNEL_SECRET
+supabase secrets set LINE_LIFF_URL=https://liff.line.me/2012030979-CQQzGFWo
+supabase secrets set LINE_RICH_MENU_PAGE_2_ID=YOUR_PAGE_2_RICH_MENU_ID
 supabase secrets set REMINDER_CRON_SECRET=YOUR_RANDOM_SECRET
 # ตัวเลือก: จำกัด origin เพิ่มเติม โดยคั่นแต่ละ URL ด้วย comma
 supabase secrets set ALLOWED_WEB_ORIGINS=https://costnurse.vercel.app
 ```
 
 `LINE_CHANNEL_ACCESS_TOKEN` และ `REMINDER_CRON_SECRET` เป็นความลับ ห้ามใส่ในไฟล์ `.env` ของ frontend
+
+การตั้งค่า Rich Menu หน้า 2, alias และ LINE webhook อยู่ใน [PHASE4_LINE_SETUP.md](PHASE4_LINE_SETUP.md) ขั้นตอนเหล่านี้ห้ามเปลี่ยน Production ก่อนผ่านการทดสอบแบบควบคุม
 
 หลังจากนั้นเปิด SQL Editor และปรับ placeholder ใน `supabase/cron.sql.example` ก่อนรัน เพื่อเรียก `send-reminders` ทุก 5 นาที
 

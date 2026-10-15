@@ -459,7 +459,7 @@ Gate: stop and report before Phase 4.
 
 ### Phase 4 — LINE Rich Menu Page 2 + LINE Bot
 
-Status: **Not Started**
+Status: **Completed locally — Not deployed**
 
 Dependencies: Phase 1 payroll service, Phase 2 Day Off and Phase 3 month queries.
 
@@ -473,6 +473,27 @@ Planned tasks:
 6. Reuse canonical payroll/history services rather than recreating formulas.
 7. Add private-chat protection for salary information and Flex Message validation.
 8. Test aliases/navigation in a non-production or controlled setup before requesting production approval.
+
+Implementation result (15 October 2026):
+
+- Preserved the existing page-1 image, four actions and default-menu configuration without modification.
+- Selected the non-destructive `เมนูเพิ่มเติม` chat command as the page-2 entry point because page 1 has no unused action area.
+- Added a pastel-pink 2500×1686 page-2 SVG and upload-ready PNG under 1 MB, with six postbacks and a `richmenuswitch` return action.
+- Added a dedicated LINE webhook Edge Function that verifies `x-line-signature` against the raw request body before parsing JSON.
+- Added LINE-user-to-profile authorization, per-user queries, private-chat protection for monthly income and generic unlinked-account handling.
+- Added six Flex Message responses using real Supabase data for next shift, current-month income, OT, Day Off, shift counts and help.
+- Reused the confirmed monthly payroll rules in a tested shared bot module: configurable standard hours defaulting to 176, overlap de-duplication and immediate Special OT.
+- Added an additive webhook-event table and atomic claim function for duplicate-event protection and bounded stale/failed retry.
+- Added setup, alias, controlled verification and rollback instructions without changing LINE or Supabase production configuration.
+
+Verification result:
+
+- Unit/security/contract tests: 28 passed, 0 failed, including signature verification, privacy, formula parity, Flex structure and page-1 preservation.
+- Mobile Chrome E2E regression: 3 passed, 0 failed.
+- Vite production build: passed.
+- Supabase migration dry-run: passed; migrations 003, 004 and 005 remain pending and were not applied.
+- Deno CLI is not installed locally, so live Edge Function boot/type validation remains part of controlled deployment verification.
+- Rich Menu, aliases, webhook URL, secrets, migration and Edge Function were not deployed or changed in Production.
 
 Likely affected files after approval:
 
@@ -607,7 +628,7 @@ Gate: produce the final readiness report; deployment remains a separate user-app
 | 1. Shift & OT Business Logic | Committed and pushed; not deployed | Deployment approval remains separate | 13 unit tests, 1 mobile E2E, build and migration dry-run passed |
 | 2. Calendar + Bulk + Day Off | Committed and pushed; not deployed | Deployment approval remains separate | 17 unit tests, 2 mobile E2E, build and migration dry-run passed |
 | 3. Historical Data | Completed locally; not deployed | Deployment approval remains separate | 22 unit tests, 3 mobile E2E and build passed |
-| 4. Rich Menu Page 2 + Bot | Not Started | Phases 1–3 and LINE console audit | Signature/security tests and controlled LINE verification |
+| 4. Rich Menu Page 2 + Bot | Completed locally; not deployed | Controlled LINE verification and deployment approval | 28 unit/security tests, 3 mobile E2E, build and migration dry-run passed |
 | 5. Notification Scheduling V2 | Not Started | Task 5.1 audit and architecture approval | 20-case verification, metrics and rollback |
 | 6. Expiration Notifications | Not Started | Phases 3 and 5 | 7/3/1-day tests and no-delete proof |
 | 7. Performance + Regression | Not Started | All authorized prior phases | Measurements, full regression and E2E report |
@@ -622,13 +643,13 @@ Resolved in Phase 1:
 
 Remaining decisions:
 
-1. Confirm a Rich Menu page-switch entry point after inspecting the actual LINE menu layout.
+1. Controlled LINE verification requires the existing page-1 Rich Menu ID and a newly created page-2 Rich Menu ID; no Production mutation was made.
 2. Select a Phase 5 scheduler only after real metrics and cost evaluation.
 3. Determine the isolated environment and test identities available for connected backend and LINE E2E tests.
 4. `README.md` references `.env.example`, but no tracked `.env.example` was found in the audit inventory.
 
 ## 8. Next Step
 
-Complete Phase 3 verification, commit it as `phase 3 optimize`, push it to GitHub, then wait for explicit authorization to begin **Phase 4 — LINE Rich Menu Page 2 + LINE Bot**.
+Commit and push Phase 4 as `phase 4 optimize`, then wait for explicit authorization to begin **Phase 5 — Notification Scheduling V2**.
 
 No deployment is included in any implementation step unless the user separately authorizes it.

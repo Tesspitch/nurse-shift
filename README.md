@@ -19,6 +19,7 @@ LIFF mobile web app สำหรับบันทึกเวร คำนว�
 - ส่งออก CSV สำรอง/นำเข้า JSON และลบข้อมูลส่วนบุคคลทั้งหมดได้เอง
 - ป้องกันข้อมูลจากหลายอุปกรณ์เขียนทับกันด้วย state version
 - Supabase schema, API Edge Function และ LINE reminder Edge Function
+- LINE Bot สำหรับข้อมูลด่วน 6 รายการ พร้อม Rich Menu หน้า 2 ที่ไม่เปลี่ยนเมนูหลักเดิม
 - โหมด local-first สำหรับทดสอบ UI โดยยังไม่ต้องเชื่อมบัญชีจริง
 
 ## เริ่มทดสอบในเครื่อง
@@ -48,6 +49,8 @@ npm run build
 - `supabase/migrations/` — schema และ access control
 - `supabase/functions/app-api/` — ตรวจ LINE ID token และอ่าน/บันทึกข้อมูล
 - `supabase/functions/send-reminders/` — ส่ง LINE push ตามเวลาที่ผู้ใช้เปิดไว้
+- `supabase/functions/line-webhook/` — ตรวจ LINE signature และตอบ postback จาก Rich Menu หน้า 2
+- `docs/PHASE4_LINE_SETUP.md` — ขั้นตอนติดตั้ง Rich Menu หน้า 2 และ webhook หลังได้รับอนุญาต
 - `prototype/` — wireframe รุ่นที่ได้รับอนุมัติ เก็บไว้เป็น reference
 - `docs/ux-ui-plan.md` — specification ที่ตกลงร่วมกัน
 
