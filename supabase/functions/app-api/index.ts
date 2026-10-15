@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
+import { nextRunAt, validateNotificationRule } from '../_shared/notification-scheduling.js';
 
 type VerifiedLineUser = { sub: string; name?: string; picture?: string };
 
@@ -23,7 +24,9 @@ const supabase = createClient(
 const validationCodes = new Set([
   'INVALID_STATE', 'INVALID_SETTINGS', 'INVALID_STANDARD_HOURS', 'INVALID_CYCLE_START_DAY',
   'INVALID_COLLECTIONS', 'SHIFT_TYPES_REQUIRED', 'INVALID_SHIFT_TYPE', 'INVALID_SHIFT',
-  'INVALID_SPECIAL_OT_ITEM', 'INVALID_DAY_OFF', 'INVALID_DAY_OFF_CONFLICT', 'INVALID_FINANCIAL_ITEM', 'INVALID_REMINDER', 'INVALID_HISTORY_MONTH', 'DUPLICATE_ID', 'PAYLOAD_TOO_LARGE'
+  'INVALID_SPECIAL_OT_ITEM', 'INVALID_DAY_OFF', 'INVALID_DAY_OFF_CONFLICT', 'INVALID_FINANCIAL_ITEM', 'INVALID_REMINDER', 'INVALID_HISTORY_MONTH', 'DUPLICATE_ID', 'PAYLOAD_TOO_LARGE',
+  'INVALID_NOTIFICATION_RULE', 'INVALID_SCHEDULE_KIND', 'INVALID_TIMEZONE', 'INVALID_SCHEDULE_TIME',
+  'INVALID_SCHEDULE_AT', 'INVALID_SCHEDULE_WEEKDAY', 'INVALID_SCHEDULE_DAY'
 ]);
 
 function requestOrigin(request: Request) {
@@ -276,6 +279,25 @@ async function pushTestNotification(lineUserId: string) {
   if (!response.ok) throw new Error('LINE_PUSH_FAILED');
 }
 
+function validatedNotificationRule(payload: Record<string, unknown>) {
+  const scheduleKind = String(payload.scheduleKind || '');
+  const timezone = String(payload.timezone || 'Asia/Bangkok');
+  const scheduleConfig = payload.scheduleConfig as Record<string, unknown>;
+  const notificationType = String(payload.notificationType || 'custom');
+  if (!['custom', 'ot_reminder'].includes(notificationType) || !scheduleConfig || typeof scheduleConfig !== 'object') {
+    throw new Error('INVALID_NOTIFICATION_RULE');
+  }
+  const message = String((scheduleConfig.payload as Record<string, unknown> | undefined)?.message || '');
+  if (message.length > 500) throw new Error('INVALID_NOTIFICATION_RULE');
+  const rule = { scheduleKind, timezone, scheduleConfig };
+  validateNotificationRule(rule);
+  const scheduledFor = nextRunAt(rule, new Date());
+  if (!scheduledFor) throw new Error('INVALID_NOTIFICATION_RULE');
+  const id = payload.id == null || payload.id === '' ? null : String(payload.id);
+  if (id && !/^[0-9a-fA-F-]{36}$/.test(id)) throw new Error('INVALID_NOTIFICATION_RULE');
+  return { id, notificationType, scheduleKind, timezone, scheduleConfig, scheduledFor };
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     if (requestOrigin(request) && !allowedOrigins.has(requestOrigin(request))) return jsonResponse(request, { error: 'ORIGIN_NOT_ALLOWED' }, 403);
@@ -295,6 +317,34 @@ Deno.serve(async (request) => {
 
     if (action === 'bootstrap') return jsonResponse(request, { data: await getState(profile) });
     if (action === 'month-history') return jsonResponse(request, { data: await getMonthState(profile, String(payload.month || '')) });
+    if (action === 'list-notification-rules') {
+      const { data, error } = await supabase.from('notification_rules')
+        .select('id, notification_type, schedule_kind, timezone, schedule_config, enabled, generation, created_at, updated_at')
+        .eq('user_id', profile.id).is('source_shift_id', null).order('created_at');
+      if (error) throw error;
+      return jsonResponse(request, { data: data ?? [] });
+    }
+    if (action === 'upsert-notification-rule') {
+      const rule = validatedNotificationRule(payload as Record<string, unknown>);
+      const { data: id, error } = await supabase.rpc('upsert_notification_rule_v2', {
+        p_user_id: profile.id,
+        p_rule_id: rule.id,
+        p_notification_type: rule.notificationType,
+        p_schedule_kind: rule.scheduleKind,
+        p_timezone: rule.timezone,
+        p_schedule_config: rule.scheduleConfig,
+        p_scheduled_for: rule.scheduledFor.toISOString()
+      });
+      if (error) throw error;
+      return jsonResponse(request, { data: { id, scheduledFor: rule.scheduledFor.toISOString(), mode: 'shadow' } });
+    }
+    if (action === 'cancel-notification-rule') {
+      const id = String(payload.id || '');
+      if (!/^[0-9a-fA-F-]{36}$/.test(id)) throw new Error('INVALID_NOTIFICATION_RULE');
+      const { data: cancelled, error } = await supabase.rpc('cancel_notification_rule_v2', { p_user_id: profile.id, p_rule_id: id });
+      if (error) throw error;
+      return jsonResponse(request, { data: { cancelled: Boolean(cancelled) } });
+    }
     if (action === 'replace-state') {
       validateState(payload);
       const { error } = await supabase.rpc('replace_user_state_v2', { p_user_id: profile.id, p_state: payload, p_expected_version: Number(payload.version) });

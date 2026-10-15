@@ -1,0 +1,42 @@
+-- Phase 5 controlled-cutover example only. Do not run until Shadow Mode is approved.
+-- Keep the existing legacy cron while every user is legacy/shadow.
+-- The migration makes reminder_candidates exclude only users explicitly switched to v2.
+
+-- Due-job worker: one indexed claim query per minute.
+select cron.schedule(
+  'send-nurse-shift-reminders-v2',
+  '* * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/send-reminders',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'publishable_key'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'reminder_cron_secret')
+    ),
+    body := '{"mode":"v2-batch"}'::jsonb
+  );
+  $$
+);
+
+-- Low-frequency recovery: touches only expired leases and indexed due jobs.
+select cron.schedule(
+  'recover-nurse-shift-reminders-v2',
+  '*/30 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/send-reminders',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'publishable_key'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'reminder_cron_secret')
+    ),
+    body := '{"mode":"v2-recovery"}'::jsonb
+  );
+  $$
+);
+
+-- Switch only a controlled test user after comparing shadow jobs with legacy candidates:
+-- select public.set_notification_delivery_mode_v2('TEST_PROFILE_UUID', 'v2');
+-- Roll back without dropping V2 schema/history:
+-- select public.set_notification_delivery_mode_v2('TEST_PROFILE_UUID', 'legacy');

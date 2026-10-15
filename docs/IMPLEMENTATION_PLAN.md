@@ -514,7 +514,7 @@ Gate: do not upload/switch production Rich Menus; stop and report before Phase 5
 
 ### Phase 5 — Notification Scheduling V2
 
-Status: **Task 5.1 Audit completed — Awaiting approval for Task 5.2**
+Status: **Implemented locally in Shadow Mode — Not deployed**
 
 Dependencies: existing reminders and Phase 4 LINE behavior.
 
@@ -548,6 +548,18 @@ Implementation outline after separate approval:
 - Process a specific job with atomic claim, recipient authorization and stable LINE retry semantics.
 - Add indexed low-frequency recovery without full-table polling.
 - Preserve legacy reminders until shadow verification succeeds.
+
+Implementation result (15 October 2026):
+
+- Added an additive V2 schema for notification rules, jobs, delivery attempts and per-user delivery modes with RLS and service-role-only access.
+- Added one-time, daily, weekly, monthly and shift-offset scheduling with timezone-aware calculation and Bangkok default.
+- Added event-driven shift/reminder materialization after state mutations; jobs default to Shadow Mode.
+- Added atomic indexed claims, five-minute leases, stable idempotency/retry keys, cancellation generations, bounded transient retry and dead-job state.
+- Added signed external callback verification, a database/external scheduler adapter boundary and low-frequency indexed recovery.
+- Updated `send-reminders` while keeping `{}` as the legacy default and requiring an explicit mode for V2 delivery.
+- Added per-user controlled cutover that excludes only V2 users from the legacy candidate view and preserves compatibility logs for rollback.
+- Added deployment/rollback documentation and V2 cron examples without changing Production configuration.
+- Unit/contract tests pass; browser E2E was intentionally not run per the latest user instruction.
 
 Testing plan:
 
@@ -641,7 +653,7 @@ Gate: produce the final readiness report; deployment remains a separate user-app
 | 2. Calendar + Bulk + Day Off | Committed and pushed; not deployed | Deployment approval remains separate | 17 unit tests, 2 mobile E2E, build and migration dry-run passed |
 | 3. Historical Data | Completed locally; not deployed | Deployment approval remains separate | 22 unit tests, 3 mobile E2E and build passed |
 | 4. Rich Menu Page 2 + Bot | Completed locally; not deployed | Controlled LINE verification and deployment approval | 28 unit/security tests, 3 mobile E2E, build and migration dry-run passed |
-| 5. Notification Scheduling V2 | Task 5.1 audit complete; awaiting Task 5.2 approval | Architecture approval and request-anomaly investigation | 20-case verification, metrics and rollback |
+| 5. Notification Scheduling V2 | Implemented locally in Shadow Mode; not deployed | Controlled DB/LINE verification and production approval | Unit/contract verification, dry-run, metrics and rollback |
 | 6. Expiration Notifications | Not Started | Phases 3 and 5 | 7/3/1-day tests and no-delete proof |
 | 7. Performance + Regression | Not Started | All authorized prior phases | Measurements, full regression and E2E report |
 
@@ -656,12 +668,12 @@ Resolved in Phase 1:
 Remaining decisions:
 
 1. Controlled LINE verification requires the existing page-1 Rich Menu ID and a newly created page-2 Rich Menu ID; no Production mutation was made.
-2. Select a Phase 5 scheduler only after real metrics and cost evaluation.
-3. Determine the isolated environment and test identities available for connected backend and LINE E2E tests.
+2. Run Phase 5 Shadow Mode measurements and controlled LINE verification before enabling V2 delivery.
+3. Determine the isolated environment and test identities available for connected backend and LINE smoke tests; browser E2E remains disabled by user instruction.
 4. `README.md` references `.env.example`, but no tracked `.env.example` was found in the audit inventory.
 
 ## 8. Next Step
 
-Commit and push Phase 4 as `phase 4 optimize`, then wait for explicit authorization to begin **Phase 5 — Notification Scheduling V2**.
+Commit and push Phase 5, then wait for explicit authorization before beginning **Phase 6 — Automatic Data Expiration LINE Notifications**.
 
 No deployment is included in any implementation step unless the user separately authorizes it.
