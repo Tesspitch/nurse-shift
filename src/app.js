@@ -745,6 +745,9 @@ function bindEvents() {
     }
     const item = { id: form.elements.id.value || crypto.randomUUID(), workDate, hours, note: form.elements.note.value.trim() };
     const saved = await commit(() => {
+      // Accounts created before Special OT was introduced may not have this
+      // collection yet. Initialise it here as a final write-path safeguard.
+      if (!Array.isArray(state.specialOtItems)) state.specialOtItems = [];
       const index = state.specialOtItems.findIndex((entry) => entry.id === item.id);
       if (index >= 0) state.specialOtItems[index] = item;
       else state.specialOtItems.push(item);

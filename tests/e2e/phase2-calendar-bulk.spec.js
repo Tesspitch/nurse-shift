@@ -100,6 +100,16 @@ test('calendar details, bulk shifts and day off work on mobile', async ({ page }
   expect(fieldBoxes[2].top).toBeGreaterThanOrEqual(fieldBoxes[1].bottom);
   expect(fieldBoxes.every((box) => box.left >= 0 && box.right <= page.viewportSize().width)).toBe(true);
 
+  const settingsCardBox = await page.locator('.shift-type-setting').first().boundingBox();
+  const inputBoxes = await page.locator('.shift-type-setting').first().locator('input').evaluateAll((inputs) => inputs.map((input) => {
+    const box = input.getBoundingClientRect();
+    return { left: box.left, right: box.right, width: box.width };
+  }));
+  expect(settingsCardBox).not.toBeNull();
+  expect(inputBoxes.every((box) => box.left >= settingsCardBox.x
+    && box.right <= settingsCardBox.x + settingsCardBox.width
+    && box.width <= settingsCardBox.width)).toBe(true);
+
   const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   expect(hasHorizontalOverflow).toBe(false);
 });
