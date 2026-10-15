@@ -44,3 +44,14 @@
 - ไม่แก้ `set_config`, migration หรือ database function.
 - ไม่เพิ่ม polling หรือ Realtime.
 - ไม่เปลี่ยน optimistic concurrency; การแก้จากอีกอุปกรณ์ยังคงคืน `STATE_VERSION_CONFLICT` และโหลด state ล่าสุดตามเดิม.
+
+## Production Follow-up — 16 ตุลาคม 2569
+
+Supabase Logs แสดง `STATE_VERSION_CONFLICT` รหัส `40001` ต่อเนื่องและ Edge Function ประมาณหนึ่ง request ต่อนาที. ตรวจพบว่า Cron V2 ตัวอย่างใช้ `* * * * *` แม้ผู้ใช้ Production ยังอยู่ Legacy/Shadow.
+
+Migration `202610160001_scheduler_load_and_conflict_fix.sql` จึง:
+
+- เปลี่ยน optimistic conflict เป็น `P0001` ซึ่งไม่ใช่ retryable serialization failure แต่คงข้อความ `STATE_VERSION_CONFLICT` และ HTTP 409 เดิม.
+- ยกเลิก due/recovery Cron V2 ที่ยังไม่มีผู้ใช้ V2.
+- คง worker Legacy เพียงหนึ่งงานทุก 5 นาที ซึ่งตรงกับความละเอียดแจ้งเตือนต่ำสุดที่หน้า UI อนุญาต.
+- ไม่เปลี่ยนเวลาแจ้งเตือนที่ผู้ใช้ตั้ง; worker ยังคงเลือกเฉพาะรายการที่ถึงกำหนด.
