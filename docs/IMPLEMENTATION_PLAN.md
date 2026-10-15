@@ -580,7 +580,7 @@ Gate: no paid provider, Cron change, real-delivery cutover or production deploym
 
 ### Phase 6 — Automatic Data Expiration LINE Notifications
 
-Status: **Not Started**
+Status: **Implemented locally — Deletion disabled — Not deployed**
 
 Dependencies: Phase 3 calendar-month policy and Phase 5 scheduling infrastructure.
 
@@ -609,6 +609,16 @@ Acceptance criteria:
 - Phase 5 infrastructure is reused.
 - Opt-out is respected.
 - No records are automatically deleted.
+
+Implementation result (15 October 2026):
+
+- Added a separate expiration-notification preference without changing existing shift-reminder settings.
+- Reused Phase 5 rules, jobs, delivery attempts, idempotency, retry and recovery; no additional cron is required.
+- Added dynamic Bangkok calendar-month planning for 7, 3 and 1 days before the oldest visible month leaves the three-month window.
+- Added Thai LINE templates without salary details or claims of deletion.
+- Added indexed dry-run records with counts for shifts, Special OT, Day Off and financial items.
+- Enforced `deletion_enabled = false` at Database level and added no business-data DELETE path.
+- Added unit/contract coverage for month rollover, year rollover, February, preferences, no-data behavior and no-delete constraints.
 
 Gate: no retention-policy change or production scheduler activation without approval; stop before Phase 7.
 
@@ -654,7 +664,7 @@ Gate: produce the final readiness report; deployment remains a separate user-app
 | 3. Historical Data | Completed locally; not deployed | Deployment approval remains separate | 22 unit tests, 3 mobile E2E and build passed |
 | 4. Rich Menu Page 2 + Bot | Completed locally; not deployed | Controlled LINE verification and deployment approval | 28 unit/security tests, 3 mobile E2E, build and migration dry-run passed |
 | 5. Notification Scheduling V2 | Implemented locally in Shadow Mode; not deployed | Controlled DB/LINE verification and production approval | Unit/contract verification, dry-run, metrics and rollback |
-| 6. Expiration Notifications | Not Started | Phases 3 and 5 | 7/3/1-day tests and no-delete proof |
+| 6. Expiration Notifications | Implemented locally; deletion disabled; not deployed | Controlled Phase 5 Shadow verification | Unit/contract verification, dry-run evidence and no-delete proof |
 | 7. Performance + Regression | Not Started | All authorized prior phases | Measurements, full regression and E2E report |
 
 ## 7. Known Issues and Open Decisions

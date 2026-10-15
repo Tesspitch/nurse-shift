@@ -135,7 +135,8 @@ async function getState(profile: { id: string; display_name: string; picture_url
       cycleStartDay: settings.cycle_start_day,
       uncertaintyBuffer: Number(settings.uncertainty_buffer),
       confirmedCycle: settings.confirmed_cycle,
-      notificationsEnabled: settings.notifications_enabled
+      notificationsEnabled: settings.notifications_enabled,
+      expirationNotificationsEnabled: settings.expiration_notifications_enabled
     },
     shiftTypes: typesResult.data.map((type) => ({ id: type.id, name: type.name, startTime: type.start_time.slice(0, 5), endTime: type.end_time.slice(0, 5), premium: Number(type.premium), color: type.color })),
     shifts: shiftsResult.data.map((shift) => ({ id: shift.id, shiftTypeId: shift.shift_type_id, workDate: shift.work_date, startTime: shift.start_time.slice(0, 5), endTime: shift.end_time.slice(0, 5), urgentOtHours: 0, note: shift.note || '' })),
@@ -214,6 +215,7 @@ function validateState(state: Record<string, unknown>) {
   if (!Number.isInteger(Number(settings.standardHours)) || !isFiniteNumber(settings.standardHours, 1, 744)) throw new Error('INVALID_STANDARD_HOURS');
   if (!Number.isInteger(Number(settings.cycleStartDay)) || !isFiniteNumber(settings.cycleStartDay, 1, 28)) throw new Error('INVALID_CYCLE_START_DAY');
   if (settings.confirmedCycle != null && !isDate(settings.confirmedCycle)) throw new Error('INVALID_SETTINGS');
+  if (settings.expirationNotificationsEnabled != null && typeof settings.expirationNotificationsEnabled !== 'boolean') throw new Error('INVALID_SETTINGS');
 
   const shiftTypes = state.shiftTypes as Array<Record<string, unknown>>;
   const shifts = state.shifts as Array<Record<string, unknown>>;

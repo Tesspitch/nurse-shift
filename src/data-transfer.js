@@ -100,7 +100,10 @@ export function restoreBackup(currentState, input) {
   return {
     version: currentState.version,
     profile: currentState.profile,
-    settings: structuredClone(data.settings),
+    settings: {
+      ...structuredClone(data.settings),
+      expirationNotificationsEnabled: data.settings.expirationNotificationsEnabled !== false
+    },
     shiftTypes: structuredClone(data.shiftTypes),
     shifts: structuredClone(data.shifts).map((shift) => ({ ...shift, urgentOtHours: 0 })),
     specialOtItems,

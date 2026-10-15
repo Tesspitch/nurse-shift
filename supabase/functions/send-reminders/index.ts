@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
+import { createExpirationMessage } from '../_shared/expiration-notification.js';
 import { sendLinePush } from '../_shared/line-delivery.js';
 import { nextRunAt, retryDelayMs } from '../_shared/notification-scheduling.js';
 import { verifySchedulerInvocation } from '../_shared/scheduler-adapter.js';
@@ -34,6 +35,14 @@ function v2Message(job: Record<string, unknown>) {
   const payload = (job.payload || {}) as Record<string, unknown>;
   if (job.notification_type === 'shift_reminder') {
     return `แจ้งเตือนเวร (${leadText(Number(payload.offsetMinutes || 0))})\n${String(payload.shiftName || 'เวรของคุณ')}\n${thaiDate(String(payload.workDate))} เวลา ${String(payload.startTime || '').slice(0, 5)} น.`;
+  }
+  if (job.notification_type === 'data_expiration') {
+    return createExpirationMessage({
+      expiringMonth: String(payload.expiringMonth || ''),
+      expiryDate: String(payload.expiryDate || ''),
+      daysBefore: Number(payload.daysBefore || 0),
+      liffUrl: Deno.env.get('LIFF_URL') || ''
+    });
   }
   return String(payload.message || 'คุณมีการแจ้งเตือนจาก NurseShift');
 }
@@ -92,6 +101,12 @@ async function runLegacy() {
 }
 
 async function runV2({ jobId = null, generation = null, recovery = false }: { jobId?: string | null; generation?: number | null; recovery?: boolean }) {
+  if (recovery) {
+    const { error: planningError } = await supabase.rpc('materialize_data_expiration_jobs_v2', {
+      p_reference: new Date().toISOString(), p_user_id: null, p_force: false
+    });
+    if (planningError) console.error(JSON.stringify({ event: 'EXPIRATION_PLANNING_FAILED', code: planningError.code }));
+  }
   const { data: jobs, error } = await supabase.rpc('claim_notification_jobs_v2', {
     p_limit: jobId ? 1 : 20, p_job_id: jobId, p_generation: generation, p_recovery: recovery
   });

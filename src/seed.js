@@ -11,7 +11,8 @@ export function createInitialState() {
       cycleStartDay: 25,
       uncertaintyBuffer: 500,
       confirmedCycle: null,
-      notificationsEnabled: true
+      notificationsEnabled: true,
+      expirationNotificationsEnabled: true
     },
     shiftTypes: [
       { id: 'morning', name: 'เวรเช้า', startTime: '08:00', endTime: '16:00', premium: 0, color: '#F59E0B' },

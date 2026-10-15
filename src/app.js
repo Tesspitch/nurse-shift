@@ -286,6 +286,7 @@ function renderSettings() {
   const form = $('#settings-form');
   for (const name of ['salary', 'licenseAllowance', 'otRate', 'standardHours', 'cycleStartDay']) form.elements[name].value = state.settings[name];
   form.elements.notificationsEnabled.checked = state.settings.notificationsEnabled;
+  form.elements.expirationNotificationsEnabled.checked = state.settings.expirationNotificationsEnabled;
   $('#settings-profile-name').textContent = state.profile.displayName || 'ข้อมูลจากบัญชี LINE';
   $('#settings-profile-display-name').textContent = state.profile.displayName || 'ผู้ใช้งาน';
   $('#settings-notification-summary').textContent = state.settings.notificationsEnabled ? `เปิด · ${state.reminders.filter((item) => item.enabled).length} เวลา` : 'ปิดใช้งาน';
@@ -797,6 +798,7 @@ function bindEvents() {
     await commit(() => {
       Object.assign(state.settings, values);
       state.settings.notificationsEnabled = form.elements.notificationsEnabled.checked;
+      state.settings.expirationNotificationsEnabled = form.elements.expirationNotificationsEnabled.checked;
       $$('.shift-type-setting').forEach((row) => {
         const type = state.shiftTypes.find((item) => item.id === row.dataset.typeId);
         $$('[data-type-field]', row).forEach((input) => { type[input.dataset.typeField] = input.dataset.typeField === 'premium' ? Number(input.value) : input.value; });

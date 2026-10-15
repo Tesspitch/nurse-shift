@@ -226,6 +226,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .notification-options { min-width: 0; margin: 0; padding: 0; border: 0; transition: opacity .18s; }
 .notification-options:disabled { opacity: .42; }
 .notification-options:disabled a { pointer-events: none; }
+.notification-sub-toggle { margin-top: 13px; padding: 12px; border-radius: 14px; background: var(--canvas); }
 .switch { position: relative; width: 44px; height: 26px; }
 .switch input { position: absolute; opacity: 0; }
 .switch i { position: absolute; inset: 0; border-radius: 999px; background: #d9cfd4; transition: .2s; }
