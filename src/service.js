@@ -1,4 +1,5 @@
 import { createInitialState } from './seed.js';
+import { calculateMonthlyHistory, isAllowedHistoryMonth } from './history.js';
 
 const STORAGE_KEY = 'cost-nurse-state-v1';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -41,6 +42,7 @@ export function normalizeState(state) {
 class LocalService {
   constructor(profile = null) {
     this.profile = profile;
+    this.monthCache = new Map();
   }
 
   async bootstrap() {
@@ -59,7 +61,14 @@ class LocalService {
   async save(state) {
     state.version = Number(state.version || 0) + 1;
     this.persist(state);
+    this.monthCache.clear();
     return clone(state);
+  }
+
+  async getMonthHistory(monthKey, state) {
+    if (!isAllowedHistoryMonth(monthKey)) throw new ApiError('เลือกดูได้เฉพาะเดือนปัจจุบันและ 2 เดือนก่อนหน้า', 'INVALID_HISTORY_MONTH');
+    if (!this.monthCache.has(monthKey)) this.monthCache.set(monthKey, calculateMonthlyHistory(state, monthKey));
+    return clone(this.monthCache.get(monthKey));
   }
 
   async testNotification() {
@@ -77,6 +86,7 @@ class RemoteService {
     this.endpoint = `${baseUrl.replace(/\/$/, '')}/functions/v1/app-api`;
     this.publishableKey = publishableKey;
     this.idToken = idToken;
+    this.monthCache = new Map();
   }
 
   async call(action, payload = {}) {
@@ -120,8 +130,25 @@ class RemoteService {
     return this.call('bootstrap').then(normalizeState);
   }
 
-  save(state) {
-    return this.call('replace-state', state).then(normalizeState);
+  async save(state) {
+    const saved = normalizeState(await this.call('replace-state', state));
+    this.monthCache.clear();
+    return saved;
+  }
+
+  async getMonthHistory(monthKey, state) {
+    if (!isAllowedHistoryMonth(monthKey)) throw new ApiError('เลือกดูได้เฉพาะเดือนปัจจุบันและ 2 เดือนก่อนหน้า', 'INVALID_HISTORY_MONTH');
+    if (this.monthCache.has(monthKey)) return clone(this.monthCache.get(monthKey));
+    let monthState;
+    try {
+      monthState = await this.call('month-history', { month: monthKey });
+    } catch (error) {
+      if (error.code !== 'UNKNOWN_ACTION') throw error;
+      monthState = state;
+    }
+    const history = calculateMonthlyHistory({ ...state, ...monthState }, monthKey);
+    this.monthCache.set(monthKey, history);
+    return clone(history);
   }
 
   testNotification() {

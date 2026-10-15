@@ -23,7 +23,7 @@ const supabase = createClient(
 const validationCodes = new Set([
   'INVALID_STATE', 'INVALID_SETTINGS', 'INVALID_STANDARD_HOURS', 'INVALID_CYCLE_START_DAY',
   'INVALID_COLLECTIONS', 'SHIFT_TYPES_REQUIRED', 'INVALID_SHIFT_TYPE', 'INVALID_SHIFT',
-  'INVALID_SPECIAL_OT_ITEM', 'INVALID_DAY_OFF', 'INVALID_DAY_OFF_CONFLICT', 'INVALID_FINANCIAL_ITEM', 'INVALID_REMINDER', 'DUPLICATE_ID', 'PAYLOAD_TOO_LARGE'
+  'INVALID_SPECIAL_OT_ITEM', 'INVALID_DAY_OFF', 'INVALID_DAY_OFF_CONFLICT', 'INVALID_FINANCIAL_ITEM', 'INVALID_REMINDER', 'INVALID_HISTORY_MONTH', 'DUPLICATE_ID', 'PAYLOAD_TOO_LARGE'
 ]);
 
 function requestOrigin(request: Request) {
@@ -143,6 +143,45 @@ async function getState(profile: { id: string; display_name: string; picture_url
   };
 }
 
+function bangkokMonthKey() {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
+  return `${parts.find((part) => part.type === 'year')?.value}-${parts.find((part) => part.type === 'month')?.value}`;
+}
+
+function shiftMonthKey(monthKey: string, amount: number) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1 + amount, 1));
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function historyMonthRange(monthKey: string) {
+  if (!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(monthKey)) throw new Error('INVALID_HISTORY_MONTH');
+  const current = bangkokMonthKey();
+  if (![shiftMonthKey(current, -2), shiftMonthKey(current, -1), current].includes(monthKey)) throw new Error('INVALID_HISTORY_MONTH');
+  const next = shiftMonthKey(monthKey, 1);
+  const [nextYear, nextMonth] = next.split('-').map(Number);
+  const end = new Date(Date.UTC(nextYear, nextMonth - 1, 0)).toISOString().slice(0, 10);
+  return { start: `${monthKey}-01`, end };
+}
+
+async function getMonthState(profile: { id: string }, monthKey: string) {
+  const range = historyMonthRange(monthKey);
+  const [shiftsResult, specialOtResult, dayOffsResult, itemsResult] = await Promise.all([
+    supabase.from('shifts').select('*').eq('user_id', profile.id).gte('work_date', range.start).lte('work_date', range.end).order('work_date').order('start_time'),
+    supabase.from('special_ot_items').select('*').eq('user_id', profile.id).gte('work_date', range.start).lte('work_date', range.end).order('work_date'),
+    supabase.from('day_offs').select('*').eq('user_id', profile.id).gte('work_date', range.start).lte('work_date', range.end).order('work_date'),
+    supabase.from('financial_items').select('*').eq('user_id', profile.id).gte('work_date', range.start).lte('work_date', range.end).order('work_date')
+  ]);
+  const error = shiftsResult.error || specialOtResult.error || dayOffsResult.error || itemsResult.error;
+  if (error) throw error;
+  return {
+    shifts: shiftsResult.data.map((shift) => ({ id: shift.id, shiftTypeId: shift.shift_type_id, workDate: shift.work_date, startTime: shift.start_time.slice(0, 5), endTime: shift.end_time.slice(0, 5), urgentOtHours: 0, note: shift.note || '' })),
+    specialOtItems: specialOtResult.data.map((item) => ({ id: item.id, workDate: item.work_date, hours: item.hours, note: item.note || '' })),
+    dayOffs: dayOffsResult.data.map((item) => ({ id: item.id, workDate: item.work_date })),
+    financialItems: itemsResult.data.map((item) => ({ id: item.id, kind: item.kind, label: item.label, amount: Number(item.amount), workDate: item.work_date }))
+  };
+}
+
 function isFiniteNumber(value: unknown, min: number, max: number) {
   const number = Number(value);
   return Number.isFinite(number) && number >= min && number <= max;
@@ -255,6 +294,7 @@ Deno.serve(async (request) => {
     const { action, payload = {} } = JSON.parse(rawBody || '{}');
 
     if (action === 'bootstrap') return jsonResponse(request, { data: await getState(profile) });
+    if (action === 'month-history') return jsonResponse(request, { data: await getMonthState(profile, String(payload.month || '')) });
     if (action === 'replace-state') {
       validateState(payload);
       const { error } = await supabase.rpc('replace_user_state_v2', { p_user_id: profile.id, p_state: payload, p_expected_version: Number(payload.version) });

@@ -90,11 +90,42 @@
           <div class="calendar-grid" id="calendar-grid"></div>
         </div>
         <div class="legend" id="shift-legend"></div>
+        <button class="history-entry" type="button" data-go="history"><span class="icon-bubble lavender"><svg><use href="#i-calendar"/></svg></span><span><b>ข้อมูลย้อนหลัง 3 เดือน</b><small>ดูเวร วันหยุด OT และรายได้ตามเดือนปฏิทิน</small></span><svg><use href="#i-right"/></svg></button>
         <section class="section-block">
           <div class="section-heading"><div><p class="eyebrow">วันที่เลือก</p><h2 id="selected-date-title">รายการเวร</h2></div></div>
           <div id="selected-shifts"></div>
         </section>
         <button class="btn btn-primary full calendar-add-action" type="button" data-action="open-shift"><svg><use href="#i-plus"/></svg>เพิ่มเวรหลายวัน</button>
+      </section>
+
+      <section class="screen" data-screen="history">
+        <header class="settings-detail-head history-head"><button class="icon-button" type="button" data-go="calendar" aria-label="กลับไปปฏิทิน"><svg><use href="#i-left"/></svg></button><div><p class="eyebrow">ย้อนหลัง 3 เดือน</p><h2>ตารางเวรและรายได้</h2></div></header>
+        <div class="history-month-selector" id="history-month-selector" aria-label="เลือกเดือนย้อนหลัง"></div>
+        <div class="history-loading" id="history-loading" role="status"><span></span><p>กำลังโหลดข้อมูลของเดือนนี้</p></div>
+        <div class="history-error" id="history-error" hidden><div class="empty-card"><b>โหลดข้อมูลไม่สำเร็จ</b><span id="history-error-message">กรุณาลองใหม่</span><button class="btn btn-secondary" id="history-retry" type="button">ลองอีกครั้ง</button></div></div>
+        <div id="history-content" hidden>
+          <article class="finance-total history-total"><div><p class="eyebrow">ยอดสุทธิโดยประมาณ</p><h2 id="history-net">฿0</h2><p id="history-month-label">เดือน</p></div><svg><use href="#i-wallet"/></svg></article>
+          <div class="history-stats">
+            <div><span>ชั่วโมงทำงาน</span><b id="history-worked-hours">0 ชม.</b></div>
+            <div><span>OT รวม</span><b id="history-ot-hours">0 ชม.</b></div>
+            <div><span>จำนวนเวร</span><b id="history-shift-total">0 เวร</b></div>
+            <div><span>วันหยุด</span><b id="history-day-off-total">0 วัน</b></div>
+          </div>
+          <section class="section-block">
+            <div class="section-heading"><div><p class="eyebrow">ปฏิทินย้อนหลัง</p><h2 id="history-calendar-title">เดือน</h2></div></div>
+            <div class="calendar-card"><div class="weekday-row"><span>อา.</span><span>จ.</span><span>อ.</span><span>พ.</span><span>พฤ.</span><span>ศ.</span><span>ส.</span></div><div class="calendar-grid is-expanded history-calendar-grid" id="history-calendar-grid"></div></div>
+            <div class="legend" id="history-legend"></div>
+          </section>
+          <section class="section-block">
+            <div class="section-heading"><div><p class="eyebrow">สรุปรายได้</p><h2>รายละเอียดเดือนนี้</h2></div></div>
+            <div class="breakdown-list" id="history-breakdown"></div>
+          </section>
+          <section class="section-block">
+            <div class="section-heading"><div><p class="eyebrow">จำนวนรายการ</p><h2>เวรแต่ละประเภท</h2></div></div>
+            <div class="history-counts" id="history-shift-counts"></div>
+            <div id="history-empty"></div>
+          </section>
+        </div>
       </section>
 
       <section class="screen" data-screen="finance">

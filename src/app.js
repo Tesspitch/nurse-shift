@@ -14,6 +14,7 @@ import {
 import { createService } from './service.js';
 import { readNavigationIntent } from './navigation.js';
 import { createBackup, createCsv, reminderLabel, restoreBackup } from './data-transfer.js';
+import { allowedHistoryMonths } from './history.js';
 
 const numberFormat = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 });
 const currencyFormat = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -32,6 +33,8 @@ let bulkMonth = new Date(calendarMonth);
 let bulkActiveType = null;
 let bulkSelections = new Map();
 let bulkSaving = false;
+let historyMonthKey = allowedHistoryMonths()[2];
+let historyRequestId = 0;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -182,6 +185,77 @@ function renderCalendar() {
     : '<div class="empty-card"><b>วันนี้ยังไม่มีรายการ</b><span>กดปุ่มเพิ่มเวรด้านล่างเพื่อจัดตาราง</span></div>';
 }
 
+function renderHistorySelector() {
+  const months = allowedHistoryMonths();
+  if (!months.includes(historyMonthKey)) historyMonthKey = months[2];
+  $('#history-month-selector').innerHTML = months.map((monthKey) => {
+    const label = thaiMonthYear(fromIsoDate(`${monthKey}-01`));
+    return `<button class="history-month-button ${monthKey === historyMonthKey ? 'is-active' : ''}" type="button" data-history-month="${monthKey}" aria-pressed="${monthKey === historyMonthKey}">${escapeHtml(label)}</button>`;
+  }).join('');
+}
+
+function renderHistoryCalendar(history) {
+  const monthDate = fromIsoDate(`${history.monthKey}-01`);
+  const shiftsByDate = history.shifts.reduce((groups, shift) => {
+    if (!groups.has(shift.workDate)) groups.set(shift.workDate, []);
+    groups.get(shift.workDate).push(shift);
+    return groups;
+  }, new Map());
+  const specialOtDates = new Set(history.specialOtItems.map((item) => item.workDate));
+  const dayOffDates = new Set(history.dayOffs.map((item) => item.workDate));
+  $('#history-calendar-title').textContent = thaiMonthYear(monthDate);
+  $('#history-calendar-grid').innerHTML = calendarCells(monthDate).map((cell) => {
+    const types = (shiftsByDate.get(cell.iso) || []).map((shift) => state.shiftTypes.find((type) => type.id === shift.shiftTypeId)).filter(Boolean);
+    const labels = `${types.map((type) => `<span style="--dot-color:${type.color}">${escapeHtml(type.name.replace('เวร', ''))}</span>`).join('')}${specialOtDates.has(cell.iso) ? '<span style="--dot-color:#DB2777">OT</span>' : ''}${dayOffDates.has(cell.iso) ? '<span style="--dot-color:#16A34A">หยุด</span>' : ''}`;
+    return `<div class="calendar-day ${cell.currentMonth ? '' : 'is-outside'}" aria-label="${formatThaiDate(cell.iso)}"><span class="day-number">${cell.day}</span><span class="day-labels">${labels}</span></div>`;
+  }).join('');
+  $('#history-legend').innerHTML = `${state.shiftTypes.map((type) => `<span><i style="--dot-color:${type.color}"></i>${escapeHtml(type.name)}</span>`).join('')}<span><i style="--dot-color:#DB2777"></i>OT พิเศษ</span><span><i style="--dot-color:#16A34A"></i>วันหยุด</span>`;
+}
+
+function renderHistory(history) {
+  const monthLabel = thaiMonthYear(fromIsoDate(`${history.monthKey}-01`));
+  $('#history-net').textContent = money(history.net);
+  $('#history-month-label').textContent = `${monthLabel} · คำนวณจากอัตราปัจจุบัน`;
+  $('#history-worked-hours').textContent = `${numberFormat.format(history.workedHours)} ชม.`;
+  $('#history-ot-hours').textContent = `${numberFormat.format(history.totalOtHours)} ชม.`;
+  $('#history-shift-total').textContent = `${history.shifts.length} เวร`;
+  $('#history-day-off-total').textContent = `${history.dayOffs.length} วัน`;
+  renderHistoryCalendar(history);
+  const rows = [
+    ['ฐานเงินเดือน', state.settings.salary],
+    ['ค่าใบประกอบ', state.settings.licenseAllowance],
+    [`ค่าเวร (${history.shifts.length} เวร)`, history.shiftIncome],
+    [`OT ปกติ ${numberFormat.format(history.normalOtHours)} ชม.`, history.normalOtIncome],
+    [`OT พิเศษ ${numberFormat.format(history.specialOtHours)} ชม.`, history.specialOtIncome],
+    ['รายรับเพิ่มเติม', history.otherIncome],
+    ['รายการหัก', -history.deductions, 'deduction'],
+    ['ยอดสุทธิ', history.net, 'total']
+  ];
+  $('#history-breakdown').innerHTML = rows.map(([label, value, className = '']) => `<div class="breakdown-row ${className}"><span>${escapeHtml(label)}</span><b>${value < 0 ? '−' : ''}${money(Math.abs(value))}</b></div>`).join('');
+  $('#history-shift-counts').innerHTML = state.shiftTypes.map((type) => `<span class="history-count"><i style="--type-color:${type.color}"></i>${escapeHtml(type.name)} <b>${history.shiftCounts[type.id] || 0}</b></span>`).join('');
+  $('#history-empty').innerHTML = history.hasActivity ? '' : '<div class="empty-card"><b>เดือนนี้ยังไม่มีรายการ</b><span>ไม่พบเวร วันหยุด OT พิเศษ หรือรายการรายรับรายจ่าย</span></div>';
+}
+
+async function loadHistory() {
+  const requestId = ++historyRequestId;
+  renderHistorySelector();
+  $('#history-loading').hidden = false;
+  $('#history-error').hidden = true;
+  $('#history-content').hidden = true;
+  try {
+    const history = await dataService.getMonthHistory(historyMonthKey, state);
+    if (requestId !== historyRequestId) return;
+    renderHistory(history);
+    $('#history-loading').hidden = true;
+    $('#history-content').hidden = false;
+  } catch (error) {
+    if (requestId !== historyRequestId) return;
+    $('#history-loading').hidden = true;
+    $('#history-error').hidden = false;
+    $('#history-error-message').textContent = error.message || 'กรุณาลองใหม่';
+  }
+}
+
 function shiftItemHtml(shift) {
   const type = state.shiftTypes.find((item) => item.id === shift.shiftTypeId);
   return `<article class="shift-item"><i class="shift-bar" style="--type-color:${type?.color || '#a3416a'}"></i><div class="content"><b>${escapeHtml(type?.name || 'เวร')}</b><span>${shift.startTime}–${shift.endTime} น. · ${plainMoney(type?.premium || 0)}</span></div><button class="delete-button" data-delete-shift="${shift.id}" aria-label="ลบ ${escapeHtml(type?.name || 'เวร')}"><svg><use href="#i-trash"/></svg></button></article>`;
@@ -316,11 +390,14 @@ function renderAll() {
   renderFinance(payroll);
   renderSettings();
   renderSlip(payroll);
+  renderHistorySelector();
+  if ($('[data-screen="history"]').classList.contains('is-active')) loadHistory();
 }
 
 const screenMeta = {
   home: ['รอบปัจจุบัน', 'ภาพรวมของฉัน'],
   calendar: ['ตารางเวร', 'ปฏิทินของฉัน'],
+  history: ['ย้อนหลัง 3 เดือน', 'ตารางเวรและรายได้'],
   finance: ['สรุปส่วนบุคคล', 'รายได้และรายจ่าย'],
   settings: ['ปรับให้เหมาะกับคุณ', 'ตั้งค่าระบบ']
 };
@@ -371,6 +448,7 @@ function showScreen(name, preserveSettings = false) {
   $('#screen-eyebrow').textContent = eyebrow;
   $('#screen-title').textContent = title;
   if (name === 'settings') applySettingsView();
+  if (name === 'history') loadHistory();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -506,6 +584,13 @@ function bindEvents() {
     calendarMonth = new Date(fromIsoDate(selectedDate).getFullYear(), fromIsoDate(selectedDate).getMonth(), 1);
     renderCalendar();
   });
+  $('#history-month-selector').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-history-month]');
+    if (!button || button.dataset.historyMonth === historyMonthKey) return;
+    historyMonthKey = button.dataset.historyMonth;
+    loadHistory();
+  });
+  $('#history-retry').addEventListener('click', loadHistory);
 
   $('#bulk-type-options').addEventListener('click', (event) => {
     const button = event.target.closest('[data-bulk-type]');

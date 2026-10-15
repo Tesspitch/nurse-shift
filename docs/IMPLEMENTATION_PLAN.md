@@ -2,7 +2,7 @@
 
 เอกสารนี้จัดทำจาก Repository Audit ณ วันที่ 15 ตุลาคม 2026 และใช้ `prompt.md` เป็น Requirements หลัก
 
-สถานะเอกสาร: **Implementation tracker — Phase 1–2 completed locally, not deployed**
+สถานะเอกสาร: **Implementation tracker — Phase 1–3 completed locally, not deployed**
 
 ข้อจำกัดของรอบงานนี้:
 
@@ -328,7 +328,7 @@ Gate: completed locally and stopped before Phase 2. Database migration, Edge Fun
 
 ### Phase 2 — Calendar UX/UI + Bulk Shift + Day Off
 
-Status: **Completed locally — Not deployed**
+Status: **Committed and pushed (`83412ce`) — Not deployed**
 
 Dependencies: Phase 1 calculation and Special OT contracts.
 
@@ -397,7 +397,7 @@ Gate: stop and report before Phase 3.
 
 ### Phase 3 — Historical Data (Current Month + Previous 2 Months)
 
-Status: **Not Started**
+Status: **Completed locally — Not deployed**
 
 Dependencies: Phase 1 calculations and Phase 2 Day Off model.
 
@@ -410,6 +410,25 @@ Planned tasks:
 5. Cache by user/month and invalidate affected months after mutations.
 6. Handle year boundaries, leap years, overnight shifts and empty months.
 7. Confirm that leaving the display range never deletes database records.
+
+Implementation result (15 October 2026):
+
+- Added a dedicated Historical Data screen so the operational calendar can continue showing future shifts.
+- Added an Asia/Bangkok month selector limited to the current month and previous two calendar months, including year boundaries.
+- Added calendar-month summaries for shifts, Day Off, Special OT, worked hours, Normal OT, premiums, additional income, deductions and estimated net income.
+- Added month-scoped authenticated Supabase queries filtered by `user_id` and `work_date`.
+- Added a per-authenticated-service month cache and invalidated it after every successful state mutation.
+- Added loading, error, retry and empty states for mobile LIFF usage.
+- Kept records outside the three-month display window untouched; no deletion or retention logic was added.
+- Added backward-compatible fallback to the already-loaded state while an older Edge Function does not yet support `month-history`.
+
+Verification result:
+
+- Unit tests: 22 passed, 0 failed.
+- Mobile Chrome E2E: 3 passed, 0 failed, including Phase 1–2 regression.
+- Vite production build: passed.
+- No database migration was required for Phase 3.
+- Edge Function and frontend changes have not been manually deployed.
 
 Likely affected files after approval:
 
@@ -586,8 +605,8 @@ Gate: produce the final readiness report; deployment remains a separate user-app
 | Phase | Status | Blocking dependency | Evidence required to complete |
 |---|---|---|---|
 | 1. Shift & OT Business Logic | Committed and pushed; not deployed | Deployment approval remains separate | 13 unit tests, 1 mobile E2E, build and migration dry-run passed |
-| 2. Calendar + Bulk + Day Off | Completed locally; not deployed | Deployment approval remains separate | 17 unit tests, 2 mobile E2E, build and migration dry-run passed |
-| 3. Historical Data | Not Started | Phases 1–2 | Month API/cache and three-month E2E |
+| 2. Calendar + Bulk + Day Off | Committed and pushed; not deployed | Deployment approval remains separate | 17 unit tests, 2 mobile E2E, build and migration dry-run passed |
+| 3. Historical Data | Completed locally; not deployed | Deployment approval remains separate | 22 unit tests, 3 mobile E2E and build passed |
 | 4. Rich Menu Page 2 + Bot | Not Started | Phases 1–3 and LINE console audit | Signature/security tests and controlled LINE verification |
 | 5. Notification Scheduling V2 | Not Started | Task 5.1 audit and architecture approval | 20-case verification, metrics and rollback |
 | 6. Expiration Notifications | Not Started | Phases 3 and 5 | 7/3/1-day tests and no-delete proof |
@@ -610,6 +629,6 @@ Remaining decisions:
 
 ## 8. Next Step
 
-Complete Phase 2 verification, commit it as `phase 2 optimize`, push it to GitHub, then wait for explicit authorization to begin **Phase 3 — Historical Data**.
+Complete Phase 3 verification, commit it as `phase 3 optimize`, push it to GitHub, then wait for explicit authorization to begin **Phase 4 — LINE Rich Menu Page 2 + LINE Bot**.
 
 No deployment is included in any implementation step unless the user separately authorizes it.
