@@ -176,12 +176,28 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .switch input:checked + i::after { transform: translateX(18px); }
 .reminder-list { display: grid; gap: 7px; margin-top: 13px; }
 .reminder-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 12px; background: var(--canvas); font-size: 11px; }
+.reminder-row > span:first-child { flex: 1; }
+.reminder-controls { display: flex; align-items: center; gap: 8px; }
+.reminder-controls .delete-button { width: 34px; height: 34px; }
+.reminder-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; margin: 12px 0; }
+.reminder-add .btn { height: 48px; }
+.connection-status { display: flex; align-items: center; gap: 7px; margin-top: 13px; padding: 9px 11px; border-radius: 11px; color: var(--ink-700); background: #f4faf7; font-size: 10px; }
+.connection-status i { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(38,115,90,.12); }
+.connection-status span { flex: 1; }
+.connection-status a { color: var(--pink-800); font-weight: 800; white-space: nowrap; }
+.connection-status.is-warning { color: #765632; background: #fff8ed; }
+.connection-status.is-warning i { background: var(--warning); box-shadow: 0 0 0 3px rgba(155,93,18,.12); }
+.privacy-note { margin: 0 0 13px; color: var(--ink-600); font-size: 11px; line-height: 1.65; }
+.data-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
 .mode-note { margin: 14px 5px 0; color: var(--ink-600); font-size: 10px; line-height: 1.55; }
 
 .btn { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 7px; padding: 0 16px; border: 0; border-radius: 13px; font-weight: 800; }
 .btn svg { width: 17px; }
 .btn-primary { min-height: 50px; color: white; background: linear-gradient(135deg, #cf7098, #9f3e67); box-shadow: 0 7px 18px rgba(163,65,106,.22); }
 .btn-small { min-height: 40px; padding: 0 12px; color: white; background: linear-gradient(135deg, #cf7098, #9f3e67); font-size: 11px; }
+.btn-secondary { min-height: 44px; border: 1px solid var(--pink-300); color: var(--pink-800); background: var(--surface-soft); font-size: 11px; }
+.btn-danger { min-height: 46px; border: 1px solid #efc7ce; color: var(--danger); background: #fff2f4; font-size: 11px; }
+.btn:disabled { cursor: wait; opacity: .58; }
 .full { width: 100%; }
 
 .bottom-nav { position: fixed; z-index: 30; right: 0; bottom: 0; left: 0; display: grid; max-width: 520px; margin: auto; padding: 7px 10px max(7px, env(safe-area-inset-bottom)); grid-template-columns: repeat(4, 1fr); border-top: 1px solid rgba(232,221,226,.9); background: rgba(255,255,255,.95); backdrop-filter: blur(14px); }
@@ -219,6 +235,19 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .toast.is-visible { transform: translateY(0); opacity: 1; }
 
 .print-slip { display: none; }
+.print-slip.is-capturing { position: fixed; top: 0; left: -10000px; display: block; width: 794px; min-height: 1123px; padding: 58px; color: #222; background: white; font-family: 'Noto Sans Thai', Tahoma, sans-serif; }
+.print-slip.is-capturing header { display: flex; justify-content: space-between; padding-bottom: 18px; border-bottom: 2px solid #a3416a; }
+.print-slip.is-capturing header p, .print-slip.is-capturing header h1 { margin: 0; }
+.print-slip.is-capturing header p { color: #a3416a; font-size: 14px; font-weight: 700; }
+.print-slip.is-capturing header h1 { margin-top: 4px; font-size: 30px; }
+.print-slip.is-capturing header span { font-size: 12px; }
+.print-slip.is-capturing .slip-person { display: flex; justify-content: space-between; padding: 22px 0; }
+.print-slip.is-capturing table { width: 100%; border-collapse: collapse; }
+.print-slip.is-capturing th, .print-slip.is-capturing td { padding: 13px; border-bottom: 1px solid #ddd; font-size: 14px; }
+.print-slip.is-capturing th { text-align: left; }
+.print-slip.is-capturing td { text-align: right; }
+.print-slip.is-capturing tfoot th, .print-slip.is-capturing tfoot td { padding-top: 18px; border-top: 2px solid #333; border-bottom: 0; font-size: 18px; }
+.print-slip.is-capturing .slip-disclaimer { margin-top: 28px; padding: 12px; color: #666; background: #f7f2f4; font-size: 11px; }
 @media print {
   @page { size: A4; margin: 15mm; }
   body { background: white; }
@@ -246,6 +275,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   .form-grid.two { grid-template-columns: 1fr; }
   .shift-type-setting { grid-template-columns: 1fr 1fr 1fr; }
   .shift-type-setting .type-name { grid-column: 1 / -1; }
+  .reminder-add { grid-template-columns: 1fr 1fr; }
+  .reminder-add .btn { grid-column: 1 / -1; }
 }
 
 @media (min-width: 700px) {

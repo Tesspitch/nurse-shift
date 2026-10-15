@@ -1,5 +1,6 @@
 export function createInitialState() {
   return {
+    version: 0,
     profile: { displayName: 'ผู้ใช้งาน', pictureUrl: '' },
     settings: {
       onboardingComplete: false,

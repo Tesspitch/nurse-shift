@@ -1,15 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'apikey, authorization, content-type, x-cron-secret, x-client-info',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
-
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
   });
 }
 
@@ -25,59 +19,97 @@ function thaiDate(value: string) {
   return new Intl.DateTimeFormat('th-TH-u-ca-buddhist', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }).format(date);
 }
 
-async function pushLineMessage(to: string, text: string) {
+function leadText(offsetMinutes: number) {
+  if (offsetMinutes % 1440 === 0) return `ก่อน ${offsetMinutes / 1440} วัน`;
+  if (offsetMinutes % 60 === 0) return `ก่อน ${offsetMinutes / 60} ชั่วโมง`;
+  return `ก่อน ${offsetMinutes} นาที`;
+}
+
+async function pushLineMessage(to: string, text: string, retryKey: string) {
   const channelAccessToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN');
-  if (!channelAccessToken) throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not configured');
+  if (!channelAccessToken) throw new Error('LINE_CHANNEL_ACCESS_TOKEN_NOT_CONFIGURED');
   const response = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${channelAccessToken}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${channelAccessToken}`, 'Content-Type': 'application/json', 'X-Line-Retry-Key': retryKey },
     body: JSON.stringify({ to, messages: [{ type: 'text', text }] })
   });
   if (!response.ok) throw new Error(`LINE_PUSH_FAILED_${response.status}`);
 }
 
-Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (request.method !== 'POST') return jsonResponse({ error: 'METHOD_NOT_ALLOWED' }, 405);
+function retryAt(attempts: number) {
+  if (attempts >= 3) return null;
+  const delayMinutes = attempts === 1 ? 5 : 10;
+  return new Date(Date.now() + delayMinutes * 60_000).toISOString();
+}
 
+Deno.serve(async (request) => {
+  if (request.method !== 'POST') return jsonResponse({ error: 'METHOD_NOT_ALLOWED' }, 405);
   const cronSecret = Deno.env.get('REMINDER_CRON_SECRET');
   if (!cronSecret || request.headers.get('x-cron-secret') !== cronSecret) return jsonResponse({ error: 'UNAUTHORIZED' }, 401);
 
   const now = new Date();
-  const windowStart = new Date(now.getTime() - 2 * 60 * 1000).toISOString();
-  const windowEnd = new Date(now.getTime() + 4 * 60 * 1000).toISOString();
+  const windowStart = new Date(now.getTime() - 30 * 60_000).toISOString();
+  const windowEnd = new Date(now.getTime() + 4 * 60_000).toISOString();
   const { data: candidates, error } = await supabase
     .from('reminder_candidates')
     .select('*')
     .gte('notify_at', windowStart)
     .lt('notify_at', windowEnd);
-  if (error) return jsonResponse({ error: error.message }, 500);
+  if (error) {
+    console.error(JSON.stringify({ event: 'REMINDER_QUERY_FAILED', code: error.code }));
+    return jsonResponse({ error: 'REMINDER_QUERY_FAILED' }, 500);
+  }
 
+  let claimed = 0;
   let sent = 0;
+  let failed = 0;
   for (const candidate of candidates ?? []) {
-    const { data: existing } = await supabase
+    const { data: didClaim, error: claimError } = await supabase.rpc('claim_notification_delivery', {
+      p_user_id: candidate.user_id,
+      p_shift_id: candidate.shift_id,
+      p_reminder_id: candidate.reminder_id
+    });
+    if (claimError) {
+      failed += 1;
+      console.error(JSON.stringify({ event: 'REMINDER_CLAIM_FAILED', shiftId: candidate.shift_id, code: claimError.code }));
+      continue;
+    }
+    if (!didClaim) continue;
+    claimed += 1;
+
+    const { data: delivery } = await supabase
       .from('notification_logs')
-      .select('id')
+      .select('id, attempts')
       .eq('shift_id', candidate.shift_id)
       .eq('reminder_id', candidate.reminder_id)
-      .maybeSingle();
-    if (existing) continue;
+      .single();
+    const attempts = Number(delivery?.attempts || 1);
+    const retryKey = String(delivery?.id || crypto.randomUUID());
+    const text = `แจ้งเตือนเวร (${leadText(candidate.offset_minutes)})\n${candidate.shift_name}\n${thaiDate(candidate.work_date)} เวลา ${String(candidate.start_time).slice(0, 5)} น.`;
 
-    const lead = candidate.offset_minutes >= 1440
-      ? `ก่อน ${candidate.offset_minutes / 1440} วัน`
-      : `ก่อน ${candidate.offset_minutes} นาที`;
-    const text = `แจ้งเตือนเวร (${lead})\n${candidate.shift_name}\n${thaiDate(candidate.work_date)} เวลา ${String(candidate.start_time).slice(0, 5)} น.`;
     try {
-      await pushLineMessage(candidate.line_user_id, text);
-      const { error: logError } = await supabase.from('notification_logs').insert({
-        user_id: candidate.user_id,
-        shift_id: candidate.shift_id,
-        reminder_id: candidate.reminder_id
-      });
-      if (!logError) sent += 1;
+      await pushLineMessage(candidate.line_user_id, text, retryKey);
+      const { error: updateError } = await supabase
+        .from('notification_logs')
+        .update({ status: 'sent', sent_at: new Date().toISOString(), next_attempt_at: null, last_error: null })
+        .eq('shift_id', candidate.shift_id)
+        .eq('reminder_id', candidate.reminder_id)
+        .eq('status', 'pending');
+      if (updateError) throw new Error('DELIVERY_LOG_UPDATE_FAILED');
+      sent += 1;
     } catch (pushError) {
-      console.error(pushError instanceof Error ? pushError.message : 'LINE_PUSH_FAILED');
+      failed += 1;
+      const errorCode = pushError instanceof Error ? pushError.message.slice(0, 80) : 'LINE_PUSH_FAILED';
+      await supabase
+        .from('notification_logs')
+        .update({ status: 'failed', next_attempt_at: retryAt(attempts), last_error: errorCode })
+        .eq('shift_id', candidate.shift_id)
+        .eq('reminder_id', candidate.reminder_id)
+        .eq('status', 'pending');
+      console.error(JSON.stringify({ event: 'REMINDER_SEND_FAILED', shiftId: candidate.shift_id, attempt: attempts, error: errorCode }));
     }
   }
-  return jsonResponse({ checked: candidates?.length ?? 0, sent });
+
+  const result = { checked: candidates?.length ?? 0, claimed, sent, failed };
+  return jsonResponse(result, failed ? 207 : 200);
 });

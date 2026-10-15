@@ -12,6 +12,7 @@ import {
 } from './date.js';
 import { createService } from './service.js';
 import { readNavigationIntent } from './navigation.js';
+import { createBackup, createCsv, reminderLabel, restoreBackup } from './data-transfer.js';
 
 const numberFormat = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 });
 const currencyFormat = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -24,6 +25,7 @@ let dataService;
 let serviceMode = 'local';
 let toastTimer;
 let pendingNavigation = null;
+let lineFriendship = null;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -65,7 +67,15 @@ async function commit(change, successMessage) {
     if (successMessage) showToast(successMessage);
     return true;
   } catch (error) {
-    state = previous;
+    if (error.code === 'STATE_VERSION_CONFLICT') {
+      try {
+        state = await dataService.bootstrap();
+      } catch {
+        state = previous;
+      }
+    } else {
+      state = previous;
+    }
     renderAll();
     showToast(error.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
     return false;
@@ -183,7 +193,19 @@ function renderSettings() {
       <label class="field"><span>สิ้นสุด</span><input type="time" data-type-field="endTime" value="${type.endTime}"></label>
       <label class="field"><span>ค่าเพิ่ม (บาท)</span><input type="number" min="0" data-type-field="premium" value="${type.premium}" inputmode="decimal"></label>
     </div>`).join('');
-  $('#reminder-settings').innerHTML = state.reminders.map((reminder) => `<label class="reminder-row"><span>${reminder.offsetMinutes >= 1440 ? `ก่อน ${reminder.offsetMinutes / 1440} วัน` : `ก่อน ${reminder.offsetMinutes} นาที`}</span><span class="switch"><input type="checkbox" data-reminder-id="${reminder.id}" ${reminder.enabled ? 'checked' : ''}><i></i></span></label>`).join('');
+  $('#reminder-settings').innerHTML = state.reminders.length
+    ? state.reminders.map((reminder) => `<div class="reminder-row"><span>${reminderLabel(reminder.offsetMinutes)}</span><span class="reminder-controls"><label class="switch" aria-label="${reminder.enabled ? 'ปิด' : 'เปิด'} ${reminderLabel(reminder.offsetMinutes)}"><input type="checkbox" data-reminder-id="${reminder.id}" ${reminder.enabled ? 'checked' : ''}><i></i></label><button class="delete-button" type="button" data-delete-reminder="${reminder.id}" aria-label="ลบ ${reminderLabel(reminder.offsetMinutes)}"><svg><use href="#i-trash"/></svg></button></span></div>`).join('')
+    : '<div class="empty-card"><b>ยังไม่มีเวลาแจ้งเตือน</b><span>เพิ่มเวลาที่ต้องการด้านล่าง</span></div>';
+  const status = $('#line-status');
+  status.classList.toggle('is-warning', serviceMode !== 'connected' || lineFriendship === false);
+  status.querySelector('span').textContent = serviceMode !== 'connected'
+    ? 'โหมดทดสอบในเครื่อง ยังไม่ส่งข้อความ LINE'
+    : lineFriendship === false
+      ? 'ยังไม่ได้เพิ่ม Official Account เป็นเพื่อน จึงรับการแจ้งเตือนไม่ได้'
+      : lineFriendship === true
+        ? 'เชื่อมต่อ LINE และเพิ่ม Official Account แล้ว'
+        : 'เชื่อมต่อ LINE แล้ว กดส่งข้อความทดสอบเพื่อยืนยัน';
+  $('#add-line-friend').hidden = serviceMode !== 'connected' || lineFriendship === true;
   $('#mode-note').textContent = serviceMode === 'connected'
     ? 'เชื่อมต่อ LINE และ Supabase แล้ว ข้อมูลจะถูกบันทึกในบัญชีของคุณ'
     : 'ขณะนี้เป็นโหมดทดสอบในเครื่อง ข้อมูลเก็บไว้ในเบราว์เซอร์นี้เท่านั้น';
@@ -203,6 +225,49 @@ function renderSlip(payroll) {
     ['รายการหัก', -payroll.deductions]
   ].map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${value < 0 ? '−' : ''}${money(Math.abs(value))}</td></tr>`).join('');
   $('#slip-net').textContent = payroll.confirmed ? money(payroll.net) : `${money(payroll.estimateLow)}–${numberFormat.format(payroll.estimateHigh)}`;
+}
+
+function downloadBlob(content, filename, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function downloadPdf(button) {
+  const originalText = button.innerHTML;
+  button.disabled = true;
+  button.textContent = 'กำลังสร้าง PDF…';
+  const slip = $('#printable-slip');
+  try {
+    renderSlip(currentPayroll());
+    slip.classList.add('is-capturing');
+    await document.fonts.ready;
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+    const canvas = await html2canvas(slip, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+    const filename = `nurseshift-${currentPayroll().cycle.start}-${currentPayroll().cycle.end}.pdf`;
+    const file = new File([pdf.output('blob')], filename, { type: 'application/pdf' });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'สรุปรายได้ NurseShift' });
+      showToast('สร้าง PDF พร้อมแชร์แล้ว');
+    } else {
+      pdf.save(filename);
+      showToast('ดาวน์โหลด PDF แล้ว');
+    }
+  } catch (error) {
+    if (error?.name === 'AbortError') return;
+    showToast('สร้าง PDF ไม่สำเร็จ กรุณาลองใหม่');
+  } finally {
+    slip.classList.remove('is-capturing');
+    button.disabled = false;
+    button.innerHTML = originalText;
+  }
 }
 
 function renderAll() {
@@ -351,6 +416,48 @@ function bindEvents() {
     if (!button) return;
     await commit(() => { state.financialItems = state.financialItems.filter((item) => item.id !== button.dataset.deleteItem); }, 'ลบรายการแล้ว');
   });
+  $('#reminder-settings').addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-delete-reminder]');
+    if (!button) return;
+    await commit(() => { state.reminders = state.reminders.filter((reminder) => reminder.id !== button.dataset.deleteReminder); }, 'ลบเวลาแจ้งเตือนแล้ว');
+  });
+
+  $('#add-reminder').addEventListener('click', async () => {
+    const amount = Number($('#reminder-amount').value);
+    const multiplier = Number($('#reminder-unit').value);
+    const offsetMinutes = amount * multiplier;
+    if (!Number.isInteger(amount) || amount < 1 || !Number.isInteger(offsetMinutes) || offsetMinutes < 5 || offsetMinutes > 43200) {
+      showToast('ตั้งเวลาได้ตั้งแต่ 5 นาทีถึง 30 วัน');
+      return;
+    }
+    if (state.reminders.some((reminder) => reminder.offsetMinutes === offsetMinutes)) {
+      showToast('มีเวลาแจ้งเตือนนี้อยู่แล้ว');
+      return;
+    }
+    await commit(() => {
+      state.reminders.push({ id: `reminder-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`, offsetMinutes, enabled: true });
+      state.reminders.sort((a, b) => b.offsetMinutes - a.offsetMinutes);
+    }, `เพิ่มแจ้งเตือน${reminderLabel(offsetMinutes)}แล้ว`);
+  });
+
+  $('#test-notification').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    if (lineFriendship === false) {
+      showToast('กรุณาเพิ่ม Official Account เป็นเพื่อนก่อนทดสอบ');
+      return;
+    }
+    button.disabled = true;
+    try {
+      await dataService.testNotification();
+      lineFriendship = true;
+      renderSettings();
+      showToast('ส่งข้อความทดสอบแล้ว กรุณาตรวจใน LINE');
+    } catch (error) {
+      showToast(error.message || 'ส่งข้อความทดสอบไม่สำเร็จ');
+    } finally {
+      button.disabled = false;
+    }
+  });
 
   $('#shift-type-select').addEventListener('change', (event) => { updateShiftTimes(event.target.value); updateOverlapWarning(); });
   $('#shift-form').addEventListener('input', (event) => {
@@ -406,8 +513,15 @@ function bindEvents() {
   $('#settings-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const values = Object.fromEntries(['salary', 'licenseAllowance', 'otRate', 'standardHours', 'cycleStartDay'].map((name) => [name, Number(form.elements[name].value)]));
+    if ([values.salary, values.licenseAllowance, values.otRate].some((value) => !Number.isFinite(value) || value < 0)
+        || !Number.isInteger(values.standardHours) || values.standardHours < 1 || values.standardHours > 744
+        || !Number.isInteger(values.cycleStartDay) || values.cycleStartDay < 1 || values.cycleStartDay > 28) {
+      showToast('กรุณาตรวจสอบอัตราคำนวณและรอบเงินเดือน');
+      return;
+    }
     await commit(() => {
-      for (const name of ['salary', 'licenseAllowance', 'otRate', 'standardHours', 'cycleStartDay']) state.settings[name] = Number(form.elements[name].value);
+      Object.assign(state.settings, values);
       state.settings.notificationsEnabled = form.elements.notificationsEnabled.checked;
       $$('.shift-type-setting').forEach((row) => {
         const type = state.shiftTypes.find((item) => item.id === row.dataset.typeId);
@@ -435,10 +549,48 @@ function bindEvents() {
     }
   });
 
-  $('#print-slip').addEventListener('click', () => {
-    renderSlip(currentPayroll());
-    window.print();
+  $('#export-csv').addEventListener('click', () => {
+    const payroll = currentPayroll();
+    downloadBlob(`\ufeff${createCsv(state, payroll)}`, `nurseshift-${payroll.cycle.start}-${payroll.cycle.end}.csv`, 'text/csv;charset=utf-8');
+    showToast('ส่งออก CSV แล้ว');
   });
+  $('#export-backup').addEventListener('click', () => {
+    downloadBlob(JSON.stringify(createBackup(state), null, 2), `nurseshift-backup-${todayIso}.json`, 'application/json;charset=utf-8');
+    showToast('ดาวน์โหลดข้อมูลสำรองแล้ว');
+  });
+  $('#import-backup').addEventListener('click', () => {
+    $('#backup-file').value = '';
+    $('#backup-file').click();
+  });
+  $('#backup-file').addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      if (file.size > 1_000_000) throw new Error('ไฟล์ข้อมูลสำรองใหญ่เกิน 1 MB');
+      const restored = restoreBackup(state, JSON.parse(await file.text()));
+      if (!window.confirm('นำเข้าข้อมูลนี้แทนข้อมูลปัจจุบันทั้งหมดหรือไม่?')) return;
+      await commit(() => { state = restored; }, 'นำเข้าข้อมูลสำรองแล้ว');
+    } catch (error) {
+      showToast(error.message || 'นำเข้าข้อมูลไม่สำเร็จ');
+    }
+  });
+  $('#delete-account').addEventListener('click', async (event) => {
+    if (!window.confirm('ลบตารางเวร รายได้ การตั้งค่า และประวัติแจ้งเตือนทั้งหมดอย่างถาวรหรือไม่?')) return;
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      await dataService.deleteAccount();
+      showToast('ลบข้อมูลทั้งหมดแล้ว');
+      setTimeout(() => {
+        if (window.liff?.isInClient()) window.liff.closeWindow();
+        else window.location.reload();
+      }, 900);
+    } catch (error) {
+      showToast(error.message || 'ลบข้อมูลไม่สำเร็จ');
+      button.disabled = false;
+    }
+  });
+  $('#print-slip').addEventListener('click', (event) => downloadPdf(event.currentTarget));
 }
 
 async function initialize() {
@@ -448,6 +600,7 @@ async function initialize() {
     pendingNavigation = readNavigationIntent(window.location.search);
     dataService = result.service;
     serviceMode = result.mode;
+    lineFriendship = result.isFriend;
     state = await dataService.bootstrap();
     renderAll();
     $('#loading').hidden = true;

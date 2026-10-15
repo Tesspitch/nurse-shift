@@ -26,6 +26,8 @@ supabase functions deploy send-reminders
 supabase secrets set LINE_LOGIN_CHANNEL_ID=YOUR_LINE_LOGIN_CHANNEL_ID
 supabase secrets set LINE_CHANNEL_ACCESS_TOKEN=YOUR_MESSAGING_API_CHANNEL_ACCESS_TOKEN
 supabase secrets set REMINDER_CRON_SECRET=YOUR_RANDOM_SECRET
+# ตัวเลือก: จำกัด origin เพิ่มเติม โดยคั่นแต่ละ URL ด้วย comma
+supabase secrets set ALLOWED_WEB_ORIGINS=https://costnurse.vercel.app
 ```
 
 `LINE_CHANNEL_ACCESS_TOKEN` และ `REMINDER_CRON_SECRET` เป็นความลับ ห้ามใส่ในไฟล์ `.env` ของ frontend
@@ -77,4 +79,9 @@ VITE_MOCK_MODE=false
 - OT เคสด่วนรับเฉพาะจำนวนเต็ม
 - รอบวันที่ 25 ถึง 24 และค่าประเภทเวรตรงกับผู้ใช้
 - LINE ส่งเตือนก่อน 1 วันและก่อน 1 ชั่วโมงเพียงครั้งเดียว
+- ปุ่ม “ส่งข้อความทดสอบ” ส่งถึงผู้ใช้ได้ และหน้าแสดงว่าเพิ่ม Official Account แล้ว
+- ทดลองเพิ่มเวลาแจ้งเตือนเองทั้งหน่วยนาที ชั่วโมง และวัน
+- ทดสอบ Export CSV, PDF, สำรอง JSON และนำ JSON กลับเข้า
+- เปิดสองอุปกรณ์พร้อมกันแล้วข้อมูลเก่าไม่เขียนทับข้อมูลใหม่โดยไม่แจ้งเตือน
+- ตรวจ Edge Function logs หากมี `REMINDER_SEND_FAILED`; ระบบจะ Retry สูงสุด 3 ครั้ง
 - สลิปแสดงข้อความว่าเป็นสรุปส่วนบุคคล ไม่ใช่เอกสารจากนายจ้าง

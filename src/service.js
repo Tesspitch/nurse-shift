@@ -1,6 +1,16 @@
 import { createInitialState } from './seed.js';
 
 const STORAGE_KEY = 'cost-nurse-state-v1';
+const REQUEST_TIMEOUT_MS = 15000;
+
+export class ApiError extends Error {
+  constructor(message, code = 'API_ERROR', status = 0) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.status = status;
+  }
+}
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -14,6 +24,7 @@ class LocalService {
   async bootstrap() {
     const saved = localStorage.getItem(STORAGE_KEY);
     const state = saved ? JSON.parse(saved) : createInitialState();
+    state.version = Number(state.version || 0);
     if (this.profile) state.profile = this.profile;
     this.persist(state);
     return state;
@@ -24,8 +35,18 @@ class LocalService {
   }
 
   async save(state) {
+    state.version = Number(state.version || 0) + 1;
     this.persist(state);
     return clone(state);
+  }
+
+  async testNotification() {
+    throw new ApiError('ปุ่มทดสอบใช้ได้เมื่อเชื่อมต่อ LINE และ Supabase', 'LOCAL_MODE');
+  }
+
+  async deleteAccount() {
+    localStorage.removeItem(STORAGE_KEY);
+    return { deleted: true };
   }
 }
 
@@ -43,14 +64,34 @@ class RemoteService {
     };
     if (this.idToken) headers['x-line-id-token'] = this.idToken;
 
-    const response = await fetch(this.endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ action, payload })
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'ไม่สามารถเชื่อมต่อระบบได้');
-    return result.data;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(this.endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ action, payload }),
+        signal: controller.signal
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const messages = {
+          STATE_VERSION_CONFLICT: 'ข้อมูลถูกแก้ไขจากอีกอุปกรณ์ ระบบโหลดข้อมูลล่าสุดแล้ว',
+          LINE_ID_TOKEN_INVALID: 'การเข้าสู่ระบบ LINE หมดอายุ กรุณาปิดและเปิดใหม่',
+          NOTIFICATION_RATE_LIMITED: 'เพิ่งส่งข้อความทดสอบ กรุณารอ 1 นาที',
+          LINE_PUSH_FAILED: 'ส่งข้อความไม่สำเร็จ กรุณาตรวจว่าเพิ่มเพื่อน Official Account แล้ว'
+        };
+        const code = result.error || 'API_ERROR';
+        throw new ApiError(messages[code] || 'ระบบบันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่', code, response.status);
+      }
+      return result.data;
+    } catch (error) {
+      if (error.name === 'AbortError') throw new ApiError('เชื่อมต่อนานเกินไป กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่', 'REQUEST_TIMEOUT');
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(navigator.onLine ? 'เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่' : 'อินเทอร์เน็ตขาดหาย ข้อมูลยังไม่ถูกบันทึก', 'NETWORK_ERROR');
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   bootstrap() {
@@ -59,6 +100,14 @@ class RemoteService {
 
   save(state) {
     return this.call('replace-state', state);
+  }
+
+  testNotification() {
+    return this.call('test-notification');
+  }
+
+  deleteAccount() {
+    return this.call('delete-account');
   }
 }
 
@@ -73,8 +122,15 @@ async function initializeLine() {
   const idToken = window.liff.getIDToken();
   if (!idToken) throw new Error('LINE ไม่ได้ส่ง ID token กรุณาเปิด scope openid ใน LIFF');
   const lineProfile = await window.liff.getProfile();
+  let friendship = null;
+  try {
+    friendship = await window.liff.getFriendship();
+  } catch {
+    // Friendship is unavailable when the LIFF app is not linked to an OA.
+  }
   return {
     idToken,
+    isFriend: friendship?.friendFlag ?? null,
     profile: {
       displayName: lineProfile.displayName,
       pictureUrl: lineProfile.pictureUrl || ''
@@ -89,7 +145,8 @@ export async function createService() {
   const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   if (!mockMode && baseUrl && publishableKey) {
-    return { service: new RemoteService({ baseUrl, publishableKey, idToken: line?.idToken }), mode: 'connected' };
+    if (!line?.idToken) throw new ApiError('กรุณาเปิดระบบผ่าน LINE เพื่อยืนยันบัญชี', 'LINE_LOGIN_REQUIRED');
+    return { service: new RemoteService({ baseUrl, publishableKey, idToken: line.idToken }), mode: 'connected', isFriend: line.isFriend };
   }
-  return { service: new LocalService(line?.profile), mode: 'local' };
+  return { service: new LocalService(line?.profile), mode: 'local', isFriend: line?.isFriend ?? null };
 }

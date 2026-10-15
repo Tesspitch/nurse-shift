@@ -25,6 +25,10 @@
     <symbol id="i-document" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 12h6M9 16h6"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.5 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.5a2 2 0 0 0-3.4 0Z"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 3h6l1 4H8l1-4Zm-2 4 1 14h8l1-14M10 11v6m4-6v6"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5M5 20h14"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m3 11 17-8-7 18-2-8-8-2Zm8 2 9-10"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v5c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-3Zm-3 9 2 2 4-5"/></symbol>
   </svg>
 
   <div class="app-shell" id="app-shell" hidden>
@@ -107,7 +111,7 @@
         <section class="confirm-card">
           <label><input type="checkbox" id="confirm-cycle"><span><b>ข้อมูลรอบนี้ครบแล้ว</b><small>เมื่อยืนยัน ระบบจะแสดงยอดเดียวแทนช่วงประมาณการ</small></span></label>
         </section>
-        <button class="btn btn-primary full" id="print-slip"><svg><use href="#i-document"/></svg>สร้างสลิป PDF</button>
+        <button class="btn btn-primary full" id="print-slip"><svg><use href="#i-document"/></svg>ดาวน์โหลดสรุป PDF</button>
       </section>
 
       <section class="screen" data-screen="settings">
@@ -128,7 +132,25 @@
           </section>
           <section class="settings-card">
             <div class="setting-toggle"><span class="icon-bubble"><svg><use href="#i-bell"/></svg></span><span><b>แจ้งเตือนผ่าน LINE</b><small>ระบบส่งก่อนเวลาตามที่กำหนด</small></span><label class="switch"><input type="checkbox" name="notificationsEnabled"><i></i></label></div>
+            <div class="connection-status" id="line-status"><i></i><span>กำลังตรวจสอบการเชื่อมต่อ LINE</span><a id="add-line-friend" href="https://line.me/R/ti/p/@383bxufk" target="_blank" rel="noopener">เพิ่มเพื่อน</a></div>
             <div class="reminder-list" id="reminder-settings"></div>
+            <div class="reminder-add">
+              <label class="field"><span>แจ้งก่อน</span><input id="reminder-amount" type="number" min="1" max="30" value="1" inputmode="numeric"></label>
+              <label class="field"><span>หน่วย</span><select id="reminder-unit"><option value="60">ชั่วโมง</option><option value="1440">วัน</option><option value="1">นาที</option></select></label>
+              <button class="btn btn-secondary" id="add-reminder" type="button"><svg><use href="#i-plus"/></svg>เพิ่ม</button>
+            </div>
+            <button class="btn btn-secondary full" id="test-notification" type="button"><svg><use href="#i-send"/></svg>ส่งข้อความทดสอบ</button>
+          </section>
+          <section class="settings-card">
+            <div class="section-heading"><div><p class="eyebrow">ข้อมูลของคุณ</p><h2>สำรองและความเป็นส่วนตัว</h2></div><span class="icon-bubble lavender"><svg><use href="#i-shield"/></svg></span></div>
+            <p class="privacy-note">ข้อมูลเงินเดือนและตารางเวรใช้เพื่อสรุปส่วนบุคคลเท่านั้น ไม่ใช่ระบบเงินเดือนหรือเอกสารรับรองจากนายจ้าง คุณดาวน์โหลดหรือลบข้อมูลทั้งหมดได้ทุกเมื่อ</p>
+            <div class="data-actions">
+              <button class="btn btn-secondary" id="export-csv" type="button"><svg><use href="#i-download"/></svg>ส่งออก CSV</button>
+              <button class="btn btn-secondary" id="export-backup" type="button"><svg><use href="#i-download"/></svg>สำรอง JSON</button>
+              <button class="btn btn-secondary" id="import-backup" type="button"><svg><use href="#i-upload"/></svg>นำเข้าข้อมูล</button>
+              <input id="backup-file" type="file" accept="application/json,.json" hidden>
+            </div>
+            <button class="btn btn-danger full" id="delete-account" type="button"><svg><use href="#i-trash"/></svg>ลบข้อมูลทั้งหมด</button>
           </section>
           <button class="btn btn-primary full" type="submit">บันทึกการตั้งค่า</button>
         </form>
