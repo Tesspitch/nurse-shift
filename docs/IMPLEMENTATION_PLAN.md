@@ -514,7 +514,7 @@ Gate: do not upload/switch production Rich Menus; stop and report before Phase 5
 
 ### Phase 5 — Notification Scheduling V2
 
-Status: **Not Started — Task 5.1 Audit must run first**
+Status: **Task 5.1 Audit completed — Awaiting approval for Task 5.2**
 
 Dependencies: existing reminders and Phase 4 LINE behavior.
 
@@ -528,6 +528,18 @@ Task 5.1 audit plan:
 6. Document costs, free-tier limits, reliability, operational dependencies and failure modes.
 7. Propose non-destructive migrations, feature flags, shadow mode, rollback and cutover.
 8. Stop and obtain approval before Task 5.2.
+
+Task 5.1 audit result (15 October 2026):
+
+- Confirmed the repository's legacy flow: five-minute pg_cron example → pg_net → authenticated `send-reminders` → computed candidate view → atomic claim → LINE push → delivery log.
+- Confirmed no Vercel Cron configuration and no independent one-time/daily/weekly/monthly job model.
+- Documented existing protections and correctness gaps, including early-send window, missed-job window, non-classified retries, LINE 409 handling and missing cancellation generations.
+- Captured a read-only remote baseline: 2 profiles, 25 shifts, 4 reminders, 0 notification logs, 12 MB database and 100% cache hit rates.
+- Found an unrelated/unattributed high-risk metric anomaly: about 30.5M request setup calls and 29.7M `user_settings` sequential scans in roughly 11.5 hours. This cannot be attributed to a five-minute cron without further logs.
+- Selected an indexed Postgres job queue with a Supabase Cron worker as the proposed default; retained an external scheduler adapter boundary without adding a paid provider.
+- Compared Supabase Cron, per-job pg_cron, Upstash QStash and Vercel Cron with current documented limits and costs.
+- Defined additive schema, Shadow Mode, controlled cutover, retry semantics, recovery and rollback in `docs/PHASE5_NOTIFICATION_AUDIT.md`.
+- No application code, schema, cron, Edge Function or production configuration was changed.
 
 Implementation outline after separate approval:
 
@@ -629,7 +641,7 @@ Gate: produce the final readiness report; deployment remains a separate user-app
 | 2. Calendar + Bulk + Day Off | Committed and pushed; not deployed | Deployment approval remains separate | 17 unit tests, 2 mobile E2E, build and migration dry-run passed |
 | 3. Historical Data | Completed locally; not deployed | Deployment approval remains separate | 22 unit tests, 3 mobile E2E and build passed |
 | 4. Rich Menu Page 2 + Bot | Completed locally; not deployed | Controlled LINE verification and deployment approval | 28 unit/security tests, 3 mobile E2E, build and migration dry-run passed |
-| 5. Notification Scheduling V2 | Not Started | Task 5.1 audit and architecture approval | 20-case verification, metrics and rollback |
+| 5. Notification Scheduling V2 | Task 5.1 audit complete; awaiting Task 5.2 approval | Architecture approval and request-anomaly investigation | 20-case verification, metrics and rollback |
 | 6. Expiration Notifications | Not Started | Phases 3 and 5 | 7/3/1-day tests and no-delete proof |
 | 7. Performance + Regression | Not Started | All authorized prior phases | Measurements, full regression and E2E report |
 
