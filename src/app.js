@@ -59,6 +59,22 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2400);
 }
 
+async function withButtonLoading(button, loadingText, action) {
+  if (button.getAttribute('aria-busy') === 'true') return false;
+  const originalContent = button.innerHTML;
+  const wasDisabled = button.disabled;
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  button.innerHTML = `<span class="button-spinner" aria-hidden="true"></span>${escapeHtml(loadingText)}`;
+  try {
+    return await action();
+  } finally {
+    button.innerHTML = originalContent;
+    button.disabled = wasDisabled;
+    button.removeAttribute('aria-busy');
+  }
+}
+
 function cycleText(cycle) {
   return `${formatThaiDate(cycle.start)} – ${formatThaiDate(cycle.end)}`;
 }
@@ -67,35 +83,38 @@ function currentPayroll() {
   return calculatePayroll(state, new Date());
 }
 
-async function commit(change, successMessage) {
+async function commit(change, successMessage, button) {
   if (commitInProgress) {
     showToast('กำลังบันทึก กรุณารอสักครู่');
     return false;
   }
-  commitInProgress = true;
-  let previous = structuredClone(state);
-  try {
-    change();
-    state = await dataService.save(state);
-    renderAll();
-    if (successMessage) showToast(successMessage);
-    return true;
-  } catch (error) {
-    if (error.code === 'STATE_VERSION_CONFLICT') {
-      try {
-        state = await dataService.bootstrap();
-      } catch {
+  const save = async () => {
+    commitInProgress = true;
+    const previous = structuredClone(state);
+    try {
+      change();
+      state = await dataService.save(state);
+      renderAll();
+      if (successMessage) showToast(successMessage);
+      return true;
+    } catch (error) {
+      if (error.code === 'STATE_VERSION_CONFLICT') {
+        try {
+          state = await dataService.bootstrap();
+        } catch {
+          state = previous;
+        }
+      } else {
         state = previous;
       }
-    } else {
-      state = previous;
+      renderAll();
+      showToast(error.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
+      return false;
+    } finally {
+      commitInProgress = false;
     }
-    renderAll();
-    showToast(error.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
-    return false;
-  } finally {
-    commitInProgress = false;
-  }
+  };
+  return button ? withButtonLoading(button, 'กำลังบันทึก…', save) : save();
 }
 
 function setProfile() {
@@ -362,35 +381,32 @@ function downloadBlob(content, filename, type) {
 }
 
 async function downloadPdf(button) {
-  const originalText = button.innerHTML;
-  button.disabled = true;
-  button.textContent = 'กำลังสร้าง PDF…';
-  const slip = $('#printable-slip');
-  try {
-    renderSlip(currentPayroll());
-    slip.classList.add('is-capturing');
-    await document.fonts.ready;
-    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
-    const canvas = await html2canvas(slip, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-    const filename = `nurseshift-${currentPayroll().cycle.start}-${currentPayroll().cycle.end}.pdf`;
-    const file = new File([pdf.output('blob')], filename, { type: 'application/pdf' });
-    if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'สรุปรายได้ NurseShift' });
-      showToast('สร้าง PDF พร้อมแชร์แล้ว');
-    } else {
-      pdf.save(filename);
-      showToast('ดาวน์โหลด PDF แล้ว');
+  await withButtonLoading(button, 'กำลังสร้าง PDF…', async () => {
+    const slip = $('#printable-slip');
+    try {
+      renderSlip(currentPayroll());
+      slip.classList.add('is-capturing');
+      await document.fonts.ready;
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+      const canvas = await html2canvas(slip, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      const filename = `nurseshift-${currentPayroll().cycle.start}-${currentPayroll().cycle.end}.pdf`;
+      const file = new File([pdf.output('blob')], filename, { type: 'application/pdf' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'สรุปรายได้ NurseShift' });
+        showToast('สร้าง PDF พร้อมแชร์แล้ว');
+      } else {
+        pdf.save(filename);
+        showToast('ดาวน์โหลด PDF แล้ว');
+      }
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      showToast('สร้าง PDF ไม่สำเร็จ กรุณาลองใหม่');
+    } finally {
+      slip.classList.remove('is-capturing');
     }
-  } catch (error) {
-    if (error?.name === 'AbortError') return;
-    showToast('สร้าง PDF ไม่สำเร็จ กรุณาลองใหม่');
-  } finally {
-    slip.classList.remove('is-capturing');
-    button.disabled = false;
-    button.innerHTML = originalText;
-  }
+  });
 }
 
 function activeScreenName() {
@@ -541,7 +557,9 @@ function renderBulkSheet() {
   const saveButton = $('#bulk-save');
   const pendingCount = plan.shifts.length + plan.dayOffs.length;
   saveButton.disabled = bulkSaving || pendingCount === 0;
-  saveButton.textContent = bulkSaving ? 'กำลังบันทึก…' : `บันทึกทั้งหมด${pendingCount ? ` (${pendingCount})` : ''}`;
+  saveButton.innerHTML = bulkSaving
+    ? '<span class="button-spinner" aria-hidden="true"></span>กำลังบันทึก…'
+    : `บันทึกทั้งหมด${pendingCount ? ` (${pendingCount})` : ''}`;
 }
 
 function toggleBulkDate(workDate) {
@@ -653,12 +671,12 @@ function bindEvents() {
   $('#selected-shifts').addEventListener('click', async (event) => {
     const shiftButton = event.target.closest('[data-delete-shift]');
     if (shiftButton) {
-      await commit(() => { state.shifts = state.shifts.filter((shift) => shift.id !== shiftButton.dataset.deleteShift); }, 'ลบเวรแล้ว');
+      await commit(() => { state.shifts = state.shifts.filter((shift) => shift.id !== shiftButton.dataset.deleteShift); }, 'ลบเวรแล้ว', shiftButton);
       return;
     }
     const dayOffButton = event.target.closest('[data-delete-day-off]');
     if (dayOffButton) {
-      await commit(() => { state.dayOffs = state.dayOffs.filter((item) => item.id !== dayOffButton.dataset.deleteDayOff); }, 'ยกเลิกวันหยุดแล้ว');
+      await commit(() => { state.dayOffs = state.dayOffs.filter((item) => item.id !== dayOffButton.dataset.deleteDayOff); }, 'ยกเลิกวันหยุดแล้ว', dayOffButton);
       return;
     }
     const editButton = event.target.closest('[data-edit-special-ot]');
@@ -667,12 +685,12 @@ function bindEvents() {
       return;
     }
     const deleteButton = event.target.closest('[data-delete-special-ot]');
-    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว');
+    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว', deleteButton);
   });
   $('#financial-items').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-delete-item]');
     if (!button) return;
-    await commit(() => { state.financialItems = state.financialItems.filter((item) => item.id !== button.dataset.deleteItem); }, 'ลบรายการแล้ว');
+    await commit(() => { state.financialItems = state.financialItems.filter((item) => item.id !== button.dataset.deleteItem); }, 'ลบรายการแล้ว', button);
   });
   $('#special-ot-items').addEventListener('click', async (event) => {
     const editButton = event.target.closest('[data-edit-special-ot]');
@@ -682,15 +700,16 @@ function bindEvents() {
       return;
     }
     const deleteButton = event.target.closest('[data-delete-special-ot]');
-    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว');
+    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว', deleteButton);
   });
   $('#reminder-settings').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-delete-reminder]');
     if (!button) return;
-    await commit(() => { state.reminders = state.reminders.filter((reminder) => reminder.id !== button.dataset.deleteReminder); }, 'ลบเวลาแจ้งเตือนแล้ว');
+    await commit(() => { state.reminders = state.reminders.filter((reminder) => reminder.id !== button.dataset.deleteReminder); }, 'ลบเวลาแจ้งเตือนแล้ว', button);
   });
 
-  $('#add-reminder').addEventListener('click', async () => {
+  $('#add-reminder').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
     const amount = Number($('#reminder-amount').value);
     const multiplier = Number($('#reminder-unit').value);
     const offsetMinutes = amount * multiplier;
@@ -705,7 +724,7 @@ function bindEvents() {
     await commit(() => {
       state.reminders.push({ id: `reminder-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`, offsetMinutes, enabled: true });
       state.reminders.sort((a, b) => b.offsetMinutes - a.offsetMinutes);
-    }, `เพิ่มแจ้งเตือน${reminderLabel(offsetMinutes)}แล้ว`);
+    }, `เพิ่มแจ้งเตือน${reminderLabel(offsetMinutes)}แล้ว`, button);
   });
 
   $('#test-notification').addEventListener('click', async (event) => {
@@ -714,17 +733,16 @@ function bindEvents() {
       showToast('กรุณาเพิ่ม Official Account เป็นเพื่อนก่อนทดสอบ');
       return;
     }
-    button.disabled = true;
-    try {
-      await dataService.testNotification();
-      lineFriendship = true;
-      renderSettings();
-      showToast('ส่งข้อความทดสอบแล้ว กรุณาตรวจใน LINE');
-    } catch (error) {
-      showToast(error.message || 'ส่งข้อความทดสอบไม่สำเร็จ');
-    } finally {
-      button.disabled = false;
-    }
+    await withButtonLoading(button, 'กำลังส่ง…', async () => {
+      try {
+        await dataService.testNotification();
+        lineFriendship = true;
+        renderSettings();
+        showToast('ส่งข้อความทดสอบแล้ว กรุณาตรวจใน LINE');
+      } catch (error) {
+        showToast(error.message || 'ส่งข้อความทดสอบไม่สำเร็จ');
+      }
+    });
   });
 
   $('#finance-form [name="workDate"]').addEventListener('input', (event) => {
@@ -769,7 +787,7 @@ function bindEvents() {
       const index = state.specialOtItems.findIndex((entry) => entry.id === item.id);
       if (index >= 0) state.specialOtItems[index] = item;
       else state.specialOtItems.push(item);
-    }, form.elements.id.value ? 'แก้ไข OT พิเศษแล้ว' : 'บันทึก OT พิเศษแล้ว');
+    }, form.elements.id.value ? 'แก้ไข OT พิเศษแล้ว' : 'บันทึก OT พิเศษแล้ว', event.submitter || form.querySelector('[type="submit"]'));
     if (saved) {
       selectedDate = workDate;
       calendarMonth = new Date(fromIsoDate(workDate).getFullYear(), fromIsoDate(workDate).getMonth(), 1);
@@ -793,7 +811,7 @@ function bindEvents() {
       amount: Number(form.elements.amount.value),
       workDate
     };
-    const saved = await commit(() => { state.financialItems.push(item); }, 'บันทึกรายการแล้ว');
+    const saved = await commit(() => { state.financialItems.push(item); }, 'บันทึกรายการแล้ว', event.submitter || form.querySelector('[type="submit"]'));
     if (saved) closeSheets();
   });
 
@@ -824,7 +842,7 @@ function bindEvents() {
         const reminder = state.reminders.find((item) => item.id === input.dataset.reminderId);
         reminder.enabled = input.checked;
       });
-    }, 'บันทึกการตั้งค่าแล้ว');
+    }, 'บันทึกการตั้งค่าแล้ว', event.submitter || form.querySelector('[type="submit"]'));
   });
 
   $('#onboarding-form').addEventListener('submit', async (event) => {
@@ -833,7 +851,7 @@ function bindEvents() {
     const saved = await commit(() => {
       for (const name of ['salary', 'licenseAllowance', 'otRate', 'standardHours', 'cycleStartDay']) state.settings[name] = Number(form.elements[name].value);
       state.settings.onboardingComplete = true;
-    });
+    }, null, event.submitter || form.querySelector('[type="submit"]'));
     if (saved) {
       $('#onboarding').hidden = true;
       $('#app-shell').hidden = false;
@@ -862,7 +880,7 @@ function bindEvents() {
       if (file.size > 1_000_000) throw new Error('ไฟล์ข้อมูลสำรองใหญ่เกิน 1 MB');
       const restored = restoreBackup(state, JSON.parse(await file.text()));
       if (!window.confirm('นำเข้าข้อมูลนี้แทนข้อมูลปัจจุบันทั้งหมดหรือไม่?')) return;
-      await commit(() => { state = restored; }, 'นำเข้าข้อมูลสำรองแล้ว');
+      await commit(() => { state = restored; }, 'นำเข้าข้อมูลสำรองแล้ว', $('#import-backup'));
     } catch (error) {
       showToast(error.message || 'นำเข้าข้อมูลไม่สำเร็จ');
     }
@@ -870,18 +888,21 @@ function bindEvents() {
   $('#delete-account').addEventListener('click', async (event) => {
     if (!window.confirm('ลบตารางเวร รายได้ การตั้งค่า และประวัติแจ้งเตือนทั้งหมดอย่างถาวรหรือไม่?')) return;
     const button = event.currentTarget;
-    button.disabled = true;
-    try {
-      await dataService.deleteAccount();
-      showToast('ลบข้อมูลทั้งหมดแล้ว');
-      setTimeout(() => {
-        if (window.liff?.isInClient()) window.liff.closeWindow();
-        else window.location.reload();
-      }, 900);
-    } catch (error) {
-      showToast(error.message || 'ลบข้อมูลไม่สำเร็จ');
-      button.disabled = false;
-    }
+    const deleted = await withButtonLoading(button, 'กำลังลบข้อมูล…', async () => {
+      try {
+        await dataService.deleteAccount();
+        showToast('ลบข้อมูลทั้งหมดแล้ว');
+        setTimeout(() => {
+          if (window.liff?.isInClient()) window.liff.closeWindow();
+          else window.location.reload();
+        }, 900);
+        return true;
+      } catch (error) {
+        showToast(error.message || 'ลบข้อมูลไม่สำเร็จ');
+        return false;
+      }
+    });
+    if (deleted) button.disabled = true;
   });
   $('#print-slip').addEventListener('click', (event) => downloadPdf(event.currentTarget));
 }
