@@ -29,6 +29,11 @@
   <rect x="34" y="34" width="1432" height="1618" rx="62" fill="url(#main)" filter="url(#shadow)"/>
   <rect x="34" y="34" width="1432" height="1618" rx="62" fill="url(#dots)"/>
 
+  <rect x="300" y="88" width="900" height="148" rx="74" fill="#FFFFFF" opacity="0.78"/>
+  <circle cx="406" cy="162" r="45" fill="#A3416A"/>
+  <path d="M387 162h38M412 145l17 17-17 17" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="492" y="181" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="48" font-weight="700" fill="#5B3143">ข้อมูลด่วน · เมนูเพิ่มเติม</text>
+
   <circle cx="750" cy="478" r="168" fill="#FFFFFF" opacity="0.62"/>
   <circle cx="750" cy="478" r="119" fill="#FFFFFF" opacity="0.92"/>
   <g transform="translate(662 390)" fill="none" stroke="#A3416A" stroke-width="27" stroke-linecap="round" stroke-linejoin="round">

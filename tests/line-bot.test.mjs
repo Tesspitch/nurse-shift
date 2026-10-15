@@ -71,10 +71,12 @@ test('all actions create valid Flex bubbles with LIFF actions', () => {
   }
 });
 
-test('page 2 config contains six postbacks and a return switch without changing page 1', async () => {
+test('page configs contain reciprocal switches and page 2 contains six postbacks', async () => {
   const page1 = JSON.parse(await readFile(new URL('../docs/line-rich-menu.json', import.meta.url)));
   const page2 = JSON.parse(await readFile(new URL('../docs/line-rich-menu-page-2.json', import.meta.url)));
-  assert.equal(page1.areas.length, 4);
+  assert.equal(page1.areas.length, 5);
+  assert.equal(page1.areas.filter((area) => area.action.type === 'richmenuswitch').length, 1);
+  assert.equal(page1.areas.find((area) => area.action.type === 'richmenuswitch').action.richMenuAliasId, 'nurseshift-quick-info');
   assert.equal(page2.name, 'NurseShift Quick Info');
   assert.equal(page2.areas.filter((area) => area.action.type === 'postback').length, 6);
   assert.equal(page2.areas.filter((area) => area.action.type === 'richmenuswitch').length, 1);

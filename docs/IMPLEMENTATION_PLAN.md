@@ -285,7 +285,7 @@ Planned tasks:
 7. Add tests proving evening/night premiums remain unchanged.
 8. Add API validation, authorization and migration tests if the data model changes.
 
-Implementation result (15 October 2026):
+Implementation result (16 October 2026):
 
 - Confirmed `standardHours` remains user-configurable with a default of 176.
 - Added independent `specialOtItems` with date, integer hours and optional note.
@@ -397,7 +397,7 @@ Gate: stop and report before Phase 3.
 
 ### Phase 3 — Historical Data (Current Month + Previous 2 Months)
 
-Status: **Completed locally — Not deployed**
+Status: **Deployed — Controlled LINE smoke test pending**
 
 Dependencies: Phase 1 calculations and Phase 2 Day Off model.
 
@@ -476,26 +476,25 @@ Planned tasks:
 
 Implementation result (15 October 2026):
 
-- Preserved the existing page-1 image, four actions and default-menu configuration without modification.
-- Selected the non-destructive `เมนูเพิ่มเติม` chat command as the page-2 entry point because page 1 has no unused action area.
+- Preserved all four original page-1 actions and added an approved `ข้อมูลด่วน · เมนูเพิ่มเติม` switch in unused space above the overview area.
+- Retained the `เมนูเพิ่มเติม` chat command as a fallback entry point to page 2.
 - Added a pastel-pink 2500×1686 page-2 SVG and upload-ready PNG under 1 MB, with six postbacks and a `richmenuswitch` return action.
 - Added a dedicated LINE webhook Edge Function that verifies `x-line-signature` against the raw request body before parsing JSON.
 - Added LINE-user-to-profile authorization, per-user queries, private-chat protection for monthly income and generic unlinked-account handling.
 - Added six Flex Message responses using real Supabase data for next shift, current-month income, OT, Day Off, shift counts and help.
 - Reused the confirmed monthly payroll rules in a tested shared bot module: configurable standard hours defaulting to 176, overlap de-duplication and immediate Special OT.
 - Added an additive webhook-event table and atomic claim function for duplicate-event protection and bounded stale/failed retry.
-- Added setup, alias, controlled verification and rollback instructions without changing LINE or Supabase production configuration.
+- Added setup, alias, controlled verification and rollback instructions; Production rollout was later authorized and completed.
 
 Verification result:
 
-- Unit/security/contract tests: 28 passed, 0 failed, including signature verification, privacy, formula parity, Flex structure and page-1 preservation.
-- Mobile Chrome E2E regression: 3 passed, 0 failed.
+- Full Unit/Contract run: 69 passed, 0 failed, including signature verification, privacy, Flex structure and reciprocal Rich Menu switches.
+- Browser E2E was not run per the latest user instruction.
 - Vite production build: passed.
-- Supabase migration dry-run: passed; migrations 003, 004 and 005 remain pending and were not applied.
-- Deno CLI is not installed locally, so live Edge Function boot/type validation remains part of controlled deployment verification.
-- Rich Menu, aliases, webhook URL, secrets, migration and Edge Function were not deployed or changed in Production.
+- Migration `202610150005` is applied on Production and `line-webhook` is active with JWT verification disabled in favor of LINE signature verification.
+- Migration, Edge Function, secrets, webhook URL, Rich Menu page 2, reciprocal aliases and the page-1 v2 default menu are deployed. LINE endpoint verification returns HTTP 200 and webhook usage is active.
 
-Likely affected files after approval:
+Affected files:
 
 - New Rich Menu page-2 asset/configuration in `assets/` and `docs/`
 - New or extended Supabase Edge Function for webhook handling
@@ -505,12 +504,12 @@ Likely affected files after approval:
 
 Acceptance criteria:
 
-- Page 1 remains unchanged and functional.
+- All four original Page 1 actions remain functional and the approved page switch is present.
 - Page 2 and navigation work using the approved approach.
 - All six postbacks return authorized real data.
 - Signature, privacy and duplicate-processing tests pass.
 
-Gate: do not upload/switch production Rich Menus; stop and report before Phase 5.
+Gate: obtain the user's controlled LINE-client confirmation before marking Phase 4 complete.
 
 ### Phase 5 — Notification Scheduling V2
 
@@ -674,7 +673,7 @@ Gate: produce the final readiness report; deployment remains a separate user-app
 | 1. Shift & OT Business Logic | Committed and pushed; not deployed | Deployment approval remains separate | 13 unit tests, 1 mobile E2E, build and migration dry-run passed |
 | 2. Calendar + Bulk + Day Off | Committed and pushed; not deployed | Deployment approval remains separate | 17 unit tests, 2 mobile E2E, build and migration dry-run passed |
 | 3. Historical Data | Completed locally; not deployed | Deployment approval remains separate | 22 unit tests, 3 mobile E2E and build passed |
-| 4. Rich Menu Page 2 + Bot | Completed locally; not deployed | Controlled LINE verification and deployment approval | 28 unit/security tests, 3 mobile E2E, build and migration dry-run passed |
+| 4. Rich Menu Page 2 + Bot | Deployed; controlled user smoke test pending | User confirmation of page switching and bot responses | Unit/Contract tests, build, LINE endpoint verification and rollback menu |
 | 5. Notification Scheduling V2 | Implemented locally in Shadow Mode; not deployed | Controlled DB/LINE verification and production approval | Unit/contract verification, dry-run, metrics and rollback |
 | 6. Expiration Notifications | Implemented locally; deletion disabled; not deployed | Controlled Phase 5 Shadow verification | Unit/contract verification, dry-run evidence and no-delete proof |
 | 7. Performance + Regression | Completed locally; Production verification pending; not deployed | Deployment and controlled smoke-test approval | Measurements, Unit/Contract regression and readiness report |
