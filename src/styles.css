@@ -118,6 +118,9 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .day-dots i { display: block; width: 5px; height: 5px; border-radius: 50%; background: var(--dot-color); }
 .day-labels { display: none; gap: 2px; margin-top: 2px; }
 .day-labels span { display: block; overflow: hidden; padding: 1px 3px; border-radius: 4px; color: var(--dot-color); background: color-mix(in srgb, var(--dot-color) 12%, white); font-size: 7px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-grid:not(.is-expanded) .calendar-day.has-special-ot { min-height: 64px; }
+.calendar-grid:not(.is-expanded) .calendar-day.has-special-ot .day-labels { display: grid; }
+.calendar-grid:not(.is-expanded) .calendar-day.has-special-ot .day-labels span:not(.calendar-special-ot-label) { display: none; }
 .calendar-grid.is-expanded .calendar-day { min-height: 67px; }
 .calendar-grid.is-expanded .day-dots { display: none; }
 .calendar-grid.is-expanded .day-labels { display: grid; }

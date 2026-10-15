@@ -42,7 +42,7 @@ test('shows newly added special OT on its selected calendar date', async ({ page
 
   await page.locator('[data-nav="calendar"]').click();
   await expect(page.locator('#calendar-title')).toContainText('พฤศจิกายน 2569');
-  await expect(page.locator('#calendar-grid [data-date="2026-11-05"]')).toContainText('OT');
+  await expect(page.locator('#calendar-grid [data-date="2026-11-05"] .calendar-special-ot-label')).toBeVisible();
   await expect(page.locator('#selected-date-title')).toContainText('5');
   await expect(page.locator('#selected-shifts')).toContainText('OT เดือนถัดไป');
 });

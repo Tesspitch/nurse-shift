@@ -169,9 +169,9 @@ function renderCalendar() {
     const specialOtItems = specialOtByDate.get(cell.iso) || [];
     const isDayOff = dayOffDates.has(cell.iso);
     const typeItems = shifts.map((shift) => state.shiftTypes.find((type) => type.id === shift.shiftTypeId)).filter(Boolean);
-    const labels = `${typeItems.map((type) => `<span style="--dot-color:${type.color}">${escapeHtml(type.name.replace('เวร', ''))}</span>`).join('')}${specialOtItems.length ? '<span style="--dot-color:#DB2777">OT</span>' : ''}${isDayOff ? '<span style="--dot-color:#16A34A">หยุด</span>' : ''}`;
+    const labels = `${typeItems.map((type) => `<span style="--dot-color:${type.color}">${escapeHtml(type.name.replace('เวร', ''))}</span>`).join('')}${specialOtItems.length ? '<span class="calendar-special-ot-label" style="--dot-color:#DB2777">OT</span>' : ''}${isDayOff ? '<span style="--dot-color:#16A34A">หยุด</span>' : ''}`;
     const dots = `${typeItems.map((type) => `<i style="--dot-color:${type.color}"></i>`).join('')}${specialOtItems.length ? '<i style="--dot-color:#DB2777"></i>' : ''}${isDayOff ? '<i style="--dot-color:#16A34A"></i>' : ''}`;
-    const classes = [!cell.currentMonth && 'is-outside', cell.iso === todayIso && 'is-today', cell.iso === selectedDate && 'is-selected'].filter(Boolean).join(' ');
+    const classes = [!cell.currentMonth && 'is-outside', cell.iso === todayIso && 'is-today', cell.iso === selectedDate && 'is-selected', specialOtItems.length && 'has-special-ot'].filter(Boolean).join(' ');
     return `<button class="calendar-day ${classes}" data-date="${cell.iso}" aria-label="${formatThaiDate(cell.iso)}${typeItems.length ? ` มี ${typeItems.map((type) => type.name).join(' และ')}` : ''}${specialOtItems.length ? ' มี OT พิเศษ' : ''}${isDayOff ? ' เป็นวันหยุด' : ''} แตะเพื่อดูรายละเอียด"><span class="day-number">${cell.day}</span><span class="day-dots">${dots}</span><span class="day-labels">${labels}</span></button>`;
   }).join('');
 
