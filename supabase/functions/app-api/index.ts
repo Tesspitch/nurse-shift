@@ -81,7 +81,38 @@ const defaultShiftTypes = [
   { id: 'night', name: 'เวรดึก', start_time: '00:00', end_time: '08:00', premium: 300, color: '#2563EB', sort_order: 3 }
 ];
 
+type Profile = { id: string; display_name: string; picture_url: string | null };
+const profileCache = new Map<string, { profile: Profile; expiresAt: number }>();
+const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
+
 async function ensureProfile(lineUser: VerifiedLineUser) {
+  const cached = profileCache.get(lineUser.sub);
+  if (cached && cached.expiresAt > Date.now()) return cached.profile;
+
+  const { data: existing, error: lookupError } = await supabase
+    .from('profiles')
+    .select('id, display_name, picture_url')
+    .eq('line_user_id', lineUser.sub)
+    .maybeSingle();
+  if (lookupError) throw lookupError;
+  if (existing) {
+    const displayName = lineUser.name || 'ผู้ใช้งาน';
+    const pictureUrl = lineUser.picture || null;
+    let profile = existing as Profile;
+    if (existing.display_name !== displayName || existing.picture_url !== pictureUrl) {
+      const { data: updated, error: updateError } = await supabase
+        .from('profiles')
+        .update({ display_name: displayName, picture_url: pictureUrl, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select('id, display_name, picture_url')
+        .single();
+      if (updateError) throw updateError;
+      profile = updated as Profile;
+    }
+    profileCache.set(lineUser.sub, { profile, expiresAt: Date.now() + PROFILE_CACHE_TTL_MS });
+    return profile;
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .upsert({ line_user_id: lineUser.sub, display_name: lineUser.name || 'ผู้ใช้งาน', picture_url: lineUser.picture || null, updated_at: new Date().toISOString() }, { onConflict: 'line_user_id' })
@@ -97,6 +128,7 @@ async function ensureProfile(lineUser: VerifiedLineUser) {
     { user_id: profile.id, id: 'one-hour', offset_minutes: 60, enabled: true }
   ], { onConflict: 'user_id,id', ignoreDuplicates: true });
   if (remindersError) throw remindersError;
+  profileCache.set(lineUser.sub, { profile: profile as Profile, expiresAt: Date.now() + PROFILE_CACHE_TTL_MS });
   return profile;
 }
 
@@ -366,6 +398,7 @@ Deno.serve(async (request) => {
     if (action === 'delete-account') {
       const { error } = await supabase.from('profiles').delete().eq('id', profile.id);
       if (error) throw error;
+      profileCache.delete(lineUser.sub);
       return jsonResponse(request, { data: { deleted: true } });
     }
     return jsonResponse(request, { error: 'UNKNOWN_ACTION' }, 400);

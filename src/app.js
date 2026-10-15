@@ -35,6 +35,7 @@ let bulkSelections = new Map();
 let bulkSaving = false;
 let historyMonthKey = allowedHistoryMonths()[2];
 let historyRequestId = 0;
+let commitInProgress = false;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -67,9 +68,14 @@ function currentPayroll() {
 }
 
 async function commit(change, successMessage) {
-  const previous = structuredClone(state);
-  change();
+  if (commitInProgress) {
+    showToast('กำลังบันทึก กรุณารอสักครู่');
+    return false;
+  }
+  commitInProgress = true;
+  let previous = structuredClone(state);
   try {
+    change();
     state = await dataService.save(state);
     renderAll();
     if (successMessage) showToast(successMessage);
@@ -87,6 +93,8 @@ async function commit(change, successMessage) {
     renderAll();
     showToast(error.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
     return false;
+  } finally {
+    commitInProgress = false;
   }
 }
 

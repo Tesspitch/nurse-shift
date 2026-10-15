@@ -89,6 +89,8 @@ class RemoteService {
     this.publishableKey = publishableKey;
     this.idToken = idToken;
     this.monthCache = new Map();
+    this.monthRequests = new Map();
+    this.bootstrapRequest = null;
   }
 
   async call(action, payload = {}) {
@@ -129,7 +131,12 @@ class RemoteService {
   }
 
   bootstrap() {
-    return this.call('bootstrap').then(normalizeState);
+    if (!this.bootstrapRequest) {
+      this.bootstrapRequest = this.call('bootstrap')
+        .then(normalizeState)
+        .finally(() => { this.bootstrapRequest = null; });
+    }
+    return this.bootstrapRequest;
   }
 
   async save(state) {
@@ -144,16 +151,22 @@ class RemoteService {
   async getMonthHistory(monthKey, state) {
     if (!isAllowedHistoryMonth(monthKey)) throw new ApiError('เลือกดูได้เฉพาะเดือนปัจจุบันและ 2 เดือนก่อนหน้า', 'INVALID_HISTORY_MONTH');
     if (this.monthCache.has(monthKey)) return clone(this.monthCache.get(monthKey));
-    let monthState;
-    try {
-      monthState = await this.call('month-history', { month: monthKey });
-    } catch (error) {
-      if (error.code !== 'UNKNOWN_ACTION') throw error;
-      monthState = state;
+    if (!this.monthRequests.has(monthKey)) {
+      const request = (async () => {
+        let monthState;
+        try {
+          monthState = await this.call('month-history', { month: monthKey });
+        } catch (error) {
+          if (error.code !== 'UNKNOWN_ACTION') throw error;
+          monthState = state;
+        }
+        const history = calculateMonthlyHistory({ ...state, ...monthState }, monthKey);
+        this.monthCache.set(monthKey, history);
+        return history;
+      })().finally(() => this.monthRequests.delete(monthKey));
+      this.monthRequests.set(monthKey, request);
     }
-    const history = calculateMonthlyHistory({ ...state, ...monthState }, monthKey);
-    this.monthCache.set(monthKey, history);
-    return clone(history);
+    return clone(await this.monthRequests.get(monthKey));
   }
 
   testNotification() {

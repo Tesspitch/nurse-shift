@@ -23,6 +23,23 @@ test('LIFF initialization is shared and active-screen rendering avoids hidden-sc
   assert.doesNotMatch(renderBlock, /renderHome\(|renderCalendar\(|renderFinance\(|renderSettings\(|renderSlip\(/);
 });
 
+test('frontend deduplicates overlapping reads and simultaneous state saves', () => {
+  assert.match(service, /this\.bootstrapRequest/);
+  assert.match(service, /this\.monthRequests = new Map\(\)/);
+  assert.match(service, /this\.monthRequests\.has\(monthKey\)/);
+  assert.match(app, /let commitInProgress = false/);
+  assert.match(app, /if \(commitInProgress\)/);
+  assert.match(app, /finally \{[\s\S]*commitInProgress = false/);
+});
+
+test('existing profiles avoid repeated default-data upserts', () => {
+  const ensureBlock = api.slice(api.indexOf('async function ensureProfile'), api.indexOf('async function getState'));
+  assert.match(ensureBlock, /profileCache\.get\(lineUser\.sub\)/);
+  assert.match(ensureBlock, /\.eq\('line_user_id', lineUser\.sub\)[\s\S]*\.maybeSingle\(\)/);
+  assert.match(ensureBlock, /if \(existing\)[\s\S]*return profile/);
+  assert.ok(ensureBlock.indexOf('if (existing)') < ensureBlock.indexOf("from('user_settings').upsert"));
+});
+
 test('production build omits source maps and immutable hashed assets are cached', () => {
   assert.match(vite, /sourcemap: false/);
   const assetRule = vercel.headers.find((rule) => rule.source === '/assets/(.*)');
