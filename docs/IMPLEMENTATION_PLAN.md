@@ -624,7 +624,7 @@ Gate: no retention-policy change or production scheduler activation without appr
 
 ### Phase 7 — Performance Optimization + Regression Testing
 
-Status: **Not Started**
+Status: **Completed locally — Production verification pending — Not deployed**
 
 Dependencies: all prior authorized phases.
 
@@ -653,6 +653,18 @@ Acceptance criteria:
 - Authentication, authorization, RLS boundaries, payroll, calendar, history, bot and notifications have no detected regression.
 - Performance results are measured and documented rather than assumed.
 
+Implementation result (15 October 2026):
+
+- Removed seven redundant state-table reads after each successful save; the API now returns only the authoritative version.
+- Added backward-compatible client handling for both old full-state and new version-only responses.
+- Changed mutation rendering from all hidden screens to the active screen only and retained render-on-navigation correctness.
+- Reused a single LIFF initialization promise and confirmed the Supabase client remains module-scoped.
+- Kept PDF dependencies lazy-loaded and added immutable caching for hashed Vercel assets.
+- Disabled Production source maps, removing approximately 2.70 MB of generated map artifacts per build.
+- Added notification operational indexes justified by controlled cutover and delivery-history queries.
+- Added Unit/Contract regression checks; browser E2E remains disabled by explicit user instruction.
+- Documented honest before/after measurements, security status, remaining risks and Production verification gates.
+
 Gate: produce the final readiness report; deployment remains a separate user-approved action.
 
 ## 6. Phase Status Dashboard
@@ -665,7 +677,7 @@ Gate: produce the final readiness report; deployment remains a separate user-app
 | 4. Rich Menu Page 2 + Bot | Completed locally; not deployed | Controlled LINE verification and deployment approval | 28 unit/security tests, 3 mobile E2E, build and migration dry-run passed |
 | 5. Notification Scheduling V2 | Implemented locally in Shadow Mode; not deployed | Controlled DB/LINE verification and production approval | Unit/contract verification, dry-run, metrics and rollback |
 | 6. Expiration Notifications | Implemented locally; deletion disabled; not deployed | Controlled Phase 5 Shadow verification | Unit/contract verification, dry-run evidence and no-delete proof |
-| 7. Performance + Regression | Not Started | All authorized prior phases | Measurements, full regression and E2E report |
+| 7. Performance + Regression | Completed locally; Production verification pending; not deployed | Deployment and controlled smoke-test approval | Measurements, Unit/Contract regression and readiness report |
 
 ## 7. Known Issues and Open Decisions
 
@@ -684,6 +696,6 @@ Remaining decisions:
 
 ## 8. Next Step
 
-Commit and push Phase 5, then wait for explicit authorization before beginning **Phase 6 — Automatic Data Expiration LINE Notifications**.
+All seven local implementation phases are complete. Production deployment, migrations, Cron activation and controlled LINE verification remain separate approval-gated work.
 
 No deployment is included in any implementation step unless the user separately authorizes it.

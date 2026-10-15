@@ -3,6 +3,7 @@ import { calculateMonthlyHistory, isAllowedHistoryMonth } from './history.js';
 
 const STORAGE_KEY = 'cost-nurse-state-v1';
 const REQUEST_TIMEOUT_MS = 15000;
+let lineInitializationPromise;
 
 export class ApiError extends Error {
   constructor(message, code = 'API_ERROR', status = 0) {
@@ -132,7 +133,10 @@ class RemoteService {
   }
 
   async save(state) {
-    const saved = normalizeState(await this.call('replace-state', state));
+    const result = await this.call('replace-state', state);
+    const saved = result?.settings
+      ? normalizeState(result)
+      : normalizeState({ ...clone(state), version: Number(result?.version ?? state.version + 1) });
     this.monthCache.clear();
     return saved;
   }
@@ -188,8 +192,13 @@ async function initializeLine() {
   };
 }
 
+function initializeLineOnce() {
+  if (!lineInitializationPromise) lineInitializationPromise = initializeLine();
+  return lineInitializationPromise;
+}
+
 export async function createService() {
-  const line = await initializeLine();
+  const line = await initializeLineOnce();
   const mockMode = import.meta.env.VITE_MOCK_MODE !== 'false';
   const baseUrl = import.meta.env.VITE_SUPABASE_URL;
   const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;

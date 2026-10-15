@@ -349,12 +349,12 @@ Deno.serve(async (request) => {
     }
     if (action === 'replace-state') {
       validateState(payload);
-      const { error } = await supabase.rpc('replace_user_state_v2', { p_user_id: profile.id, p_state: payload, p_expected_version: Number(payload.version) });
+      const { data: version, error } = await supabase.rpc('replace_user_state_v2', { p_user_id: profile.id, p_state: payload, p_expected_version: Number(payload.version) });
       if (error) {
         if (error.message?.includes('STATE_VERSION_CONFLICT') || error.code === '40001') throw new Error('STATE_VERSION_CONFLICT');
         throw error;
       }
-      return jsonResponse(request, { data: await getState(profile) });
+      return jsonResponse(request, { data: { version: Number(version) } });
     }
     if (action === 'test-notification') {
       const { data: claimed, error } = await supabase.rpc('claim_test_notification', { p_user_id: profile.id });

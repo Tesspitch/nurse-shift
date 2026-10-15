@@ -385,16 +385,25 @@ async function downloadPdf(button) {
   }
 }
 
+function activeScreenName() {
+  return $('[data-screen].is-active')?.dataset.screen || 'home';
+}
+
+function renderScreen(name, payroll = currentPayroll()) {
+  if (name === 'home') renderHome(payroll);
+  else if (name === 'calendar') renderCalendar();
+  else if (name === 'finance') renderFinance(payroll);
+  else if (name === 'settings') renderSettings();
+  else if (name === 'history') {
+    renderHistorySelector();
+    loadHistory();
+  }
+}
+
 function renderAll() {
   const payroll = currentPayroll();
   setProfile();
-  renderHome(payroll);
-  renderCalendar();
-  renderFinance(payroll);
-  renderSettings();
-  renderSlip(payroll);
-  renderHistorySelector();
-  if ($('[data-screen="history"]').classList.contains('is-active')) loadHistory();
+  renderScreen(activeScreenName(), payroll);
 }
 
 const screenMeta = {
@@ -450,8 +459,8 @@ function showScreen(name, preserveSettings = false) {
   const [eyebrow, title] = screenMeta[name];
   $('#screen-eyebrow').textContent = eyebrow;
   $('#screen-title').textContent = title;
+  renderScreen(name);
   if (name === 'settings') applySettingsView();
-  if (name === 'history') loadHistory();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
