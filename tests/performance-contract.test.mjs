@@ -6,12 +6,14 @@ const app = await readFile(new URL('../src/app.js', import.meta.url), 'utf8');
 const service = await readFile(new URL('../src/service.js', import.meta.url), 'utf8');
 const historyRepository = await readFile(new URL('../src/infrastructure/history/cached-history-repository.js', import.meta.url), 'utf8');
 const api = await readFile(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+const apiActions = await readFile(new URL('../supabase/functions/_shared/application/app-api-actions.js', import.meta.url), 'utf8');
+const userStateRepository = await readFile(new URL('../supabase/functions/_shared/infrastructure/supabase/user-state-repository.js', import.meta.url), 'utf8');
 const vite = await readFile(new URL('../vite.config.js', import.meta.url), 'utf8');
 const vercel = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
 
 test('state saves return only the new version instead of re-querying the complete state', () => {
-  const replaceBlock = api.slice(api.indexOf("if (action === 'replace-state')"), api.indexOf("if (action === 'test-notification')"));
-  assert.match(replaceBlock, /data: \{ version: Number\(version\) \}/);
+  const replaceBlock = apiActions.slice(apiActions.indexOf("if (action === 'replace-state')"), apiActions.indexOf("if (action === 'test-notification')"));
+  assert.match(replaceBlock, /version: await userStateRepository\.replace/);
   assert.doesNotMatch(replaceBlock, /getState\(/);
   assert.match(service, /result\?\.settings[\s\S]+version: Number\(result\?\.version/);
 });
@@ -35,7 +37,7 @@ test('frontend deduplicates overlapping reads and simultaneous state saves', () 
 });
 
 test('existing profiles avoid repeated default-data upserts', () => {
-  const ensureBlock = api.slice(api.indexOf('async function ensureProfile'), api.indexOf('async function getState'));
+  const ensureBlock = userStateRepository.slice(userStateRepository.indexOf('async ensureProfile'), userStateRepository.indexOf('async getState'));
   assert.match(ensureBlock, /profileCache\.get\(lineUser\.sub\)/);
   assert.match(ensureBlock, /\.eq\('line_user_id', lineUser\.sub\)[\s\S]*\.maybeSingle\(\)/);
   assert.match(ensureBlock, /if \(existing\)[\s\S]*return profile/);

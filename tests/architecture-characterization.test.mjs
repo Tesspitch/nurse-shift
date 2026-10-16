@@ -7,8 +7,11 @@ import { normalizeState } from '../src/service.js';
 import { calculateBotMonthSummary } from '../supabase/functions/_shared/line-bot.js';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
-const [api, historyRepository, webhook, webhookMigration, fixtureText] = await Promise.all([
+const [api, apiActions, apiHttp, userStateRepository, historyRepository, webhook, webhookMigration, fixtureText] = await Promise.all([
   read('../supabase/functions/app-api/index.ts'),
+  read('../supabase/functions/_shared/application/app-api-actions.js'),
+  read('../supabase/functions/_shared/http/app-api-http.js'),
+  read('../supabase/functions/_shared/infrastructure/supabase/user-state-repository.js'),
   read('../supabase/functions/_shared/infrastructure/supabase/history-repository.js'),
   read('../supabase/functions/line-webhook/index.ts'),
   read('../supabase/migrations/202610150005_line_webhook_events.sql'),
@@ -38,7 +41,7 @@ function toBotState(state) {
 }
 
 test('app-api keeps the existing action surface and success envelopes', () => {
-  const actions = [...api.matchAll(/if \(action === '([^']+)'\)/g)].map((match) => match[1]);
+  const actions = [...apiActions.matchAll(/if \(action === '([^']+)'\)/g)].map((match) => match[1]);
   assert.deepEqual(actions, [
     'bootstrap',
     'month-history',
@@ -51,19 +54,20 @@ test('app-api keeps the existing action surface and success envelopes', () => {
   ]);
 
   const contracts = {
-    bootstrap: /\{ data: await getState\(profile\) \}/,
-    'month-history': /\{ data: await getMonthHistory\(profile\.id, String\(payload\.month \|\| ''\)\) \}/,
-    'list-notification-rules': /\{ data: data \?\? \[\] \}/,
-    'upsert-notification-rule': /\{ data: \{ id, scheduledFor: rule\.scheduledFor\.toISOString\(\), mode: 'shadow' \} \}/,
-    'cancel-notification-rule': /\{ data: \{ cancelled: Boolean\(cancelled\) \} \}/,
-    'replace-state': /\{ data: \{ version: Number\(version\) \} \}/,
-    'test-notification': /\{ data: \{ sent: true \} \}/,
-    'delete-account': /\{ data: \{ deleted: true \} \}/
+    bootstrap: /return userStateRepository\.getState\(profile\)/,
+    'month-history': /return historyUseCase\(profile\.id, String\(payload\.month \|\| ''\)\)/,
+    'list-notification-rules': /return notificationRuleRepository\.list\(profile\.id\)/,
+    'upsert-notification-rule': /return \{ id, scheduledFor: rule\.scheduledFor\.toISOString\(\), mode: 'shadow' \}/,
+    'cancel-notification-rule': /return \{ cancelled: await notificationRuleRepository\.cancel/,
+    'replace-state': /return \{ version: await userStateRepository\.replace/,
+    'test-notification': /return \{ sent: true \}/,
+    'delete-account': /return \{ deleted: true \}/
   };
   for (const [action, pattern] of Object.entries(contracts)) {
-    assert.match(api, pattern, `${action} response contract changed`);
+    assert.match(apiActions, pattern, `${action} response contract changed`);
   }
-  assert.match(api, /\{ error: 'UNKNOWN_ACTION' \}, 400/);
+  assert.match(api, /\{ data: await handleAction/);
+  assert.match(apiHttp, /message === 'UNKNOWN_ACTION'[^\n]+400/);
 });
 
 test('app-api keeps authentication, validation and HTTP error status contracts', () => {
@@ -75,11 +79,11 @@ test('app-api keeps authentication, validation and HTTP error status contracts',
     ['PAYLOAD_TOO_LARGE', 413]
   ]);
   for (const [code, status] of expected) {
-    assert.match(api, new RegExp(`message === '${code}'[^\\n]+${status}`));
+    assert.match(apiHttp, new RegExp(`message === '${code}'[^\\n]+${status}`));
   }
-  assert.match(api, /message\.startsWith\('LINE_'\)[^\n]+401/);
-  assert.match(api, /error instanceof SyntaxError \? 'INVALID_JSON' : message[^\n]+400/);
-  assert.match(api, /\{ error: 'INTERNAL_ERROR', requestId \}, 500/);
+  assert.match(apiHttp, /message\.startsWith\('LINE_'\)[^\n]+401/);
+  assert.match(apiHttp, /cause instanceof SyntaxError \? 'INVALID_JSON' : message[^\n]+400/);
+  assert.match(apiHttp, /\{ error: 'INTERNAL_ERROR', requestId \}, 500/);
   assert.match(api, /request\.method !== 'POST'[^\n]+METHOD_NOT_ALLOWED[^\n]+405/);
 });
 
@@ -96,13 +100,13 @@ test('app-api preserves camelCase state responses and snake_case persistence map
     ['workDate', 'shift.work_date'],
     ['startTime', 'shift.start_time'],
     ['endTime', 'shift.end_time'],
-    ['offsetMinutes', 'reminder.offset_minutes']
+    ['offsetMinutes', 'item.offset_minutes']
   ];
   for (const [clientKey, databaseExpression] of mappings) {
-    assert.match(`${api}\n${historyRepository}`, new RegExp(`${clientKey}: (?:Number\\()?${databaseExpression.replaceAll('.', '\\.')}`));
+    assert.match(`${userStateRepository}\n${historyRepository}`, new RegExp(`${clientKey}: (?:Number\\()?${databaseExpression.replaceAll('.', '\\.')}`));
   }
-  assert.match(api, /replace_user_state_v2/);
-  assert.match(api, /p_expected_version: Number\(payload\.version\)/);
+  assert.match(userStateRepository, /replace_user_state_v2/);
+  assert.match(userStateRepository, /p_expected_version: Number\(state\.version\)/);
 });
 
 test('golden payroll behavior matches current payroll, history and LINE bot paths', () => {
