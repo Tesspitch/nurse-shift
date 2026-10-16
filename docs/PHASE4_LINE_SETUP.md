@@ -2,7 +2,7 @@
 
 อัปเดตแผน: 16 ตุลาคม 2026
 
-สถานะ: **ติดตั้งบน Production แล้ว / รอผู้ใช้ยืนยันการสลับเมนูจาก LINE จริง**
+สถานะ: **Rich Menu v3 และ Webhook ติดตั้งบน Production แล้ว / รอผู้ใช้ยืนยันจาก LINE client**
 
 เอกสารนี้เป็นแผนดำเนินงาน Phase 4 โดยเฉพาะ การเปลี่ยน Rich Menu, Alias, Webhook, Supabase Secrets หรือ Edge Function บน Production ต้องได้รับอนุญาตก่อนเริ่มขั้นตอนนั้น
 
@@ -13,9 +13,10 @@
 | Webhook endpoint | `https://wcfpubbeyihhukrsuing.supabase.co/functions/v1/line-webhook` |
 | Webhook status | Active, LINE Verify HTTP 200 |
 | หน้าแรกเดิมสำหรับ rollback | `richmenu-19a7913a5836af90c7dd597e80379ee5` |
-| หน้าแรก v2 (Default) | `richmenu-7dadf4b044f7246010355b8d377b50cd` |
+| หน้าแรก v2 สำหรับ rollback | `richmenu-7dadf4b044f7246010355b8d377b50cd` |
+| หน้าแรก v3 (Default) | `richmenu-c8b55ddcbd4e615542730f8f4ebaa8f1` |
 | หน้า 2 | `richmenu-36fe0d0e5c16dc83404652f6606b0f7d` |
-| Main alias | `nurseshift-main` → หน้าแรก v2 |
+| Main alias | `nurseshift-main` → หน้าแรก v3 |
 | Quick-info alias | `nurseshift-quick-info` → หน้า 2 |
 
 หน้าแรกเดิมยังไม่ถูกลบและใช้ rollback ได้ทันที
@@ -57,7 +58,7 @@
 | รายการ | ไฟล์ | สถานะ |
 |---|---|---|
 | ภาพ Rich Menu หน้า 2 | `assets/line-rich-menu-page-2.png` | พร้อมอัปโหลด, 2500×1686, 363,627 bytes |
-| ภาพ Rich Menu หน้าแรก v3 | `assets/line-rich-menu.jpg` | แถบสลับเต็มความกว้างด้านบน, 2500×1686, พร้อมอัปโหลดแต่ยังไม่ deploy |
+| ภาพ Rich Menu หน้าแรก v3 | `assets/line-rich-menu.jpg` | แถบสลับเต็มความกว้างด้านบน, 2500×1686, อัปโหลดและเปิดใช้งานแล้ว |
 | Source ภาพหน้าแรก v3 | `assets/line-rich-menu.svg` | พื้นที่ภาพตรงกับ bounds ใน `docs/line-rich-menu.json` |
 | Source ภาพ | `assets/line-rich-menu-page-2.svg` | พร้อมแก้ไขภายหลัง |
 | Rich Menu areas/actions | `docs/line-rich-menu-page-2.json` | พร้อม, มี 6 postbacks และ 1 ปุ่มกลับหน้าหลัก |
@@ -143,7 +144,7 @@ LINE_LIFF_URL=https://liff.line.me/2012030979-CQQzGFWo
 
 ### Step 4.4 — Rich Menu Navigation
 
-หมายเหตุ: Production ปัจจุบันยังใช้หน้าแรก v2 ตาม Deployment Record ด้านบน ส่วนไฟล์ใน Repository เป็น candidate v3 และห้ามเปลี่ยน Default Rich Menu จนกว่าจะได้รับอนุญาต deploy
+หมายเหตุ: Production ปัจจุบันใช้หน้าแรก v3 ตาม Deployment Record ด้านบน และเก็บหน้าแรก v2 ไว้ rollback
 
 1. สร้าง Rich Menu หน้า 2 จาก `docs/line-rich-menu-page-2.json` และอัปโหลดภาพหน้า 2
 2. สร้าง Rich Menu หน้าแรก v3 จาก `docs/line-rich-menu.json` และอัปโหลด `assets/line-rich-menu.jpg`
@@ -213,4 +214,4 @@ LINE_LIFF_URL=https://liff.line.me/2012030979-CQQzGFWo
 
 ## Phase 4 Gate
 
-Production rollout เสร็จแล้ว: Webhook active, LINE Verify ผ่าน, หน้าแรก v2 เป็น Default และ aliases เชื่อมสองทิศทาง เหลือ controlled smoke test จาก LINE client ของผู้ใช้เพื่อยืนยันการสลับหน้าและคำตอบทั้ง 6 รายการ ก่อนปิด Phase 4
+Production rollout เสร็จแล้ว: Webhook รุ่นล่าสุด active, หน้าแรก v3 เป็น Default, aliases เชื่อมสองทิศทาง และ endpoint ปฏิเสธ unsigned request ด้วย HTTP 401 เหลือ controlled smoke test จาก LINE client ของผู้ใช้เพื่อยืนยันการสลับหน้าและคำตอบทั้ง 6 รายการ ก่อนปิด Phase 4
