@@ -131,24 +131,6 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--dot-color); }
 .calendar-image-button { margin-top: 12px; }
 .calendar-image-button svg { width: 16px; }
-.schedule-wallpaper { position: fixed; top: 0; left: -10000px; display: flex; width: 360px; height: 640px; flex-direction: column; padding: 18px 16px 14px; overflow: hidden; color: #282226; background: radial-gradient(ellipse at top right, #fce4ed, transparent 45%), linear-gradient(160deg, #fff9fb, #f5eff8); font-family: 'Noto Sans Thai', 'Leelawadee UI', Tahoma, sans-serif; }
-.wallpaper-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.wallpaper-eyebrow { margin: 0 0 2px; color: #a3416a; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
-.wallpaper-header h1 { margin: 0; font-size: 23px; line-height: 1.25; }
-.wallpaper-summary { flex: 0 0 auto; padding: 6px 9px; border: 1px solid #f1bfd2; border-radius: 999px; color: #8d345b; background: rgba(255,255,255,.78); font-size: 9px; font-weight: 700; white-space: nowrap; }
-.wallpaper-calendar-card { display: flex; min-height: 0; flex: 1; flex-direction: column; margin-top: 12px; padding: 8px 5px 5px; border: 1px solid rgba(232,221,226,.9); border-radius: 18px; background: rgba(255,255,255,.86); box-shadow: 0 8px 24px rgba(91,50,68,.06); }
-.wallpaper-weekdays, .wallpaper-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.wallpaper-weekdays { flex: 0 0 25px; align-items: center; color: #887981; font-size: 8px; font-weight: 800; text-align: center; }
-.wallpaper-calendar-grid { min-height: 0; flex: 1; grid-template-rows: repeat(6, minmax(0, 1fr)); }
-.wallpaper-day { min-width: 0; padding: 3px 2px; border-top: 1px solid #f2e9ed; text-align: center; }
-.wallpaper-day.is-outside { opacity: .42; }
-.wallpaper-day-number { display: grid; width: 22px; height: 22px; margin: 0 auto 2px; place-items: center; border-radius: 50%; font-size: 10px; font-weight: 700; }
-.wallpaper-day.is-today .wallpaper-day-number { color: white; background: #a3416a; }
-.wallpaper-day-label { display: block; overflow: hidden; margin-top: 2px; padding: 1px 2px; border-radius: 4px; color: var(--wallpaper-type-color); background: color-mix(in srgb, var(--wallpaper-type-color) 12%, white); font-size: 7px; font-weight: 700; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
-.wallpaper-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 11px; margin: 11px 0 0; }
-.wallpaper-legend span { display: inline-flex; align-items: center; gap: 4px; color: #6f6269; font-size: 8px; white-space: nowrap; }
-.wallpaper-legend i { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--wallpaper-type-color); }
-.wallpaper-footer { margin: 8px 0 0; color: #887981; font-size: 7px; text-align: center; }
 .history-entry { display: grid; width: 100%; min-height: 70px; grid-template-columns: 42px minmax(0, 1fr) 20px; align-items: center; gap: 11px; margin-top: 13px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 18px; color: var(--ink-800); background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(246,239,255,.92)); box-shadow: var(--shadow); text-align: left; }
 .history-entry > span:nth-child(2) { display: grid; min-width: 0; gap: 2px; }
 .history-entry b { font-size: 13px; }

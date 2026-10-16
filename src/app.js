@@ -427,67 +427,184 @@ async function downloadPdf(button) {
 
 async function downloadCalendarImage(button) {
   await withButtonLoading(button, 'กำลังสร้างภาพ…', async () => {
-    const shiftsByDate = new Map();
-    state.shifts.forEach((shift) => {
-      const type = state.shiftTypes.find((item) => item.id === shift.shiftTypeId);
-      if (!type) return;
-      if (!shiftsByDate.has(shift.workDate)) shiftsByDate.set(shift.workDate, []);
-      shiftsByDate.get(shift.workDate).push(type);
-    });
-    const dayOffDates = new Set((state.dayOffs || []).map((item) => item.workDate));
-    const specialOtDates = new Set((state.specialOtItems || []).map((item) => item.workDate));
-    const totalShifts = state.shifts.filter((shift) => shift.workDate.startsWith(toIsoDate(calendarMonth).slice(0, 7))).length;
-    const totalDaysOff = (state.dayOffs || []).filter((item) => item.workDate.startsWith(toIsoDate(calendarMonth).slice(0, 7))).length;
-    const wallpaper = document.createElement('section');
-    wallpaper.className = 'schedule-wallpaper';
-    wallpaper.setAttribute('aria-hidden', 'true');
-    wallpaper.innerHTML = `
-      <header class="wallpaper-header">
-        <div><p class="wallpaper-eyebrow">NURSESHIFT · ตารางเวร</p><h1>${escapeHtml(thaiMonthYear(calendarMonth))}</h1></div>
-        <span class="wallpaper-summary">${totalShifts} เวร · ${totalDaysOff} วันหยุด</span>
-      </header>
-      <div class="wallpaper-calendar-card">
-        <div class="wallpaper-weekdays">${['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'].map((day) => `<span>${day}</span>`).join('')}</div>
-        <div class="wallpaper-calendar-grid">${calendarCells(calendarMonth).map((cell) => {
-          const types = (shiftsByDate.get(cell.iso) || []).sort((a, b) => a.startTime.localeCompare(b.startTime));
-          const labels = types.slice(0, 2).map((type) => `<span class="wallpaper-day-label" style="--wallpaper-type-color:${calendarShiftColor(type)}">${escapeHtml(type.name.replace('เวร', '').trim())}</span>`);
-          if (types.length > 2) labels.push(`<span class="wallpaper-day-label" style="--wallpaper-type-color:#6f6269">+${types.length - 2}</span>`);
-          if (dayOffDates.has(cell.iso)) labels.push(`<span class="wallpaper-day-label" style="--wallpaper-type-color:${DAY_OFF_COLOR}">หยุด</span>`);
-          if (specialOtDates.has(cell.iso)) labels.push('<span class="wallpaper-day-label" style="--wallpaper-type-color:#DB2777">OT</span>');
-          const classes = [!cell.currentMonth && 'is-outside', cell.iso === todayIso && 'is-today'].filter(Boolean).join(' ');
-          return `<div class="wallpaper-day ${classes}"><span class="wallpaper-day-number">${cell.day}</span>${labels.join('')}</div>`;
-        }).join('')}</div>
-      </div>
-      <div class="wallpaper-legend">${state.shiftTypes.map((type) => `<span><i style="--wallpaper-type-color:${calendarShiftColor(type)}"></i>${escapeHtml(type.name)}</span>`).join('')}<span><i style="--wallpaper-type-color:${DAY_OFF_COLOR}"></i>วันหยุด</span><span><i style="--wallpaper-type-color:#DB2777"></i>OT พิเศษ</span></div>
-      <p class="wallpaper-footer">ตารางเวรส่วนบุคคล · NurseShift</p>`;
-    document.body.append(wallpaper);
-
     try {
-      await document.fonts.ready;
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(wallpaper, {
-        width: 360,
-        height: 640,
-        windowWidth: 360,
-        windowHeight: 640,
-        scale: 3,
-        backgroundColor: null,
-        useCORS: true,
-        logging: false
+      const width = 1080;
+      const height = 1920;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('เบราว์เซอร์ไม่รองรับการสร้างภาพ');
+
+      const shiftsByDate = new Map();
+      state.shifts.forEach((shift) => {
+        const type = state.shiftTypes.find((item) => item.id === shift.shiftTypeId);
+        if (!type) return;
+        if (!shiftsByDate.has(shift.workDate)) shiftsByDate.set(shift.workDate, []);
+        shiftsByDate.get(shift.workDate).push(type);
       });
+      const dayOffDates = new Set((state.dayOffs || []).map((item) => item.workDate));
+      const specialOtDates = new Set((state.specialOtItems || []).map((item) => item.workDate));
+      const monthKey = toIsoDate(calendarMonth).slice(0, 7);
+      const totalShifts = state.shifts.filter((shift) => shift.workDate.startsWith(monthKey)).length;
+      const totalDaysOff = (state.dayOffs || []).filter((item) => item.workDate.startsWith(monthKey)).length;
+      const roundedRect = (x, y, rectWidth, rectHeight, radius) => {
+        const r = Math.min(radius, rectWidth / 2, rectHeight / 2);
+        context.beginPath();
+        context.moveTo(x + r, y);
+        context.arcTo(x + rectWidth, y, x + rectWidth, y + rectHeight, r);
+        context.arcTo(x + rectWidth, y + rectHeight, x, y + rectHeight, r);
+        context.arcTo(x, y + rectHeight, x, y, r);
+        context.arcTo(x, y, x + rectWidth, y, r);
+        context.closePath();
+      };
+      const drawText = (text, x, y, font, color, maxWidth, align = 'left') => {
+        context.font = font;
+        context.fillStyle = color;
+        context.textAlign = align;
+        context.textBaseline = 'middle';
+        context.fillText(String(text), x, y, maxWidth);
+      };
+
+      const background = context.createLinearGradient(0, 0, width, height);
+      background.addColorStop(0, '#fff9fb');
+      background.addColorStop(1, '#f5eff8');
+      context.fillStyle = background;
+      context.fillRect(0, 0, width, height);
+      const glow = context.createRadialGradient(980, 60, 10, 980, 60, 720);
+      glow.addColorStop(0, 'rgba(252,228,237,.9)');
+      glow.addColorStop(1, 'rgba(252,228,237,0)');
+      context.fillStyle = glow;
+      context.fillRect(0, 0, width, 800);
+
+      drawText('NURSESHIFT · ตารางเวร', 72, 100, '800 27px "Noto Sans Thai", sans-serif', '#a3416a', 900);
+      drawText(thaiMonthYear(calendarMonth), 72, 190, '800 66px "Noto Sans Thai", sans-serif', '#282226', 900);
+
+      const summary = `${totalShifts} เวร · ${totalDaysOff} วันหยุด`;
+      context.font = '700 27px "Noto Sans Thai", sans-serif';
+      const summaryWidth = Math.ceil(context.measureText(summary).width) + 48;
+      roundedRect(width - 72 - summaryWidth, 244, summaryWidth, 62, 31);
+      context.fillStyle = 'rgba(255,255,255,.82)';
+      context.fill();
+      context.strokeStyle = '#f1bfd2';
+      context.lineWidth = 2;
+      context.stroke();
+      drawText(summary, width - 96, 275, '700 27px "Noto Sans Thai", sans-serif', '#8d345b', summaryWidth - 36, 'right');
+
+      const cardX = 42;
+      const cardY = 340;
+      const cardWidth = 996;
+      const cardHeight = 1300;
+      roundedRect(cardX, cardY, cardWidth, cardHeight, 34);
+      context.fillStyle = 'rgba(255,255,255,.9)';
+      context.fill();
+      context.strokeStyle = '#e8dde2';
+      context.lineWidth = 2;
+      context.stroke();
+
+      const innerX = cardX + 18;
+      const innerWidth = cardWidth - 36;
+      const columnWidth = innerWidth / 7;
+      const weekdays = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+      weekdays.forEach((day, index) => {
+        drawText(day, innerX + columnWidth * (index + 0.5), cardY + 58, '700 24px "Noto Sans Thai", sans-serif', '#887981', columnWidth - 8, 'center');
+      });
+
+      const gridY = cardY + 102;
+      const rowHeight = (cardHeight - 120) / 6;
+      const cells = calendarCells(calendarMonth);
+      cells.forEach((cell, index) => {
+        const row = Math.floor(index / 7);
+        const column = index % 7;
+        const x = innerX + column * columnWidth;
+        const y = gridY + row * rowHeight;
+        const types = (shiftsByDate.get(cell.iso) || []).sort((a, b) => a.startTime.localeCompare(b.startTime));
+        const labels = types.slice(0, 2).map((type) => ({
+          text: type.name.replace('เวร', '').trim(),
+          color: calendarShiftColor(type)
+        }));
+        if (types.length > 2) labels.push({ text: `+${types.length - 2}`, color: '#6f6269' });
+        if (dayOffDates.has(cell.iso)) labels.push({ text: 'หยุด', color: DAY_OFF_COLOR });
+        if (specialOtDates.has(cell.iso)) labels.push({ text: 'OT', color: '#DB2777' });
+
+        context.strokeStyle = '#f2e9ed';
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(x + 3, y);
+        context.lineTo(x + columnWidth - 3, y);
+        context.stroke();
+
+        if (!cell.currentMonth) context.globalAlpha = 0.42;
+        if (cell.iso === todayIso) {
+          context.beginPath();
+          context.arc(x + columnWidth / 2, y + 36, 29, 0, Math.PI * 2);
+          context.fillStyle = '#a3416a';
+          context.fill();
+          drawText(cell.day, x + columnWidth / 2, y + 36, '700 28px "Noto Sans Thai", sans-serif', '#ffffff', 48, 'center');
+        } else {
+          drawText(cell.day, x + columnWidth / 2, y + 36, '700 28px "Noto Sans Thai", sans-serif', '#282226', 48, 'center');
+        }
+        context.globalAlpha = 1;
+
+        const labelY = y + 62;
+        const labelHeight = 30;
+        const labelGap = 4;
+        labels.slice(0, 4).forEach((label, labelIndex) => {
+          const labelX = x + 7;
+          const yOffset = labelY + labelIndex * (labelHeight + labelGap);
+          roundedRect(labelX, yOffset, columnWidth - 14, labelHeight, 9);
+          context.fillStyle = '#f8f2f5';
+          context.fill();
+          context.fillStyle = label.color;
+          context.fillRect(labelX, yOffset + 8, 5, labelHeight - 16);
+          drawText(label.text, labelX + 13, yOffset + labelHeight / 2, '700 18px "Noto Sans Thai", sans-serif', label.color, columnWidth - 38);
+        });
+      });
+
+      const legendItems = [
+        ...state.shiftTypes.map((type) => ({ name: type.name, color: calendarShiftColor(type) })),
+        { name: 'วันหยุด', color: DAY_OFF_COLOR },
+        { name: 'OT พิเศษ', color: '#DB2777' }
+      ];
+      const legendY = 1705;
+      let legendX = 72;
+      let legendRow = 0;
+      legendItems.forEach((item) => {
+        context.font = '600 22px "Noto Sans Thai", sans-serif';
+        const itemWidth = Math.ceil(context.measureText(item.name).width) + 50;
+        if (legendX + itemWidth > width - 55) {
+          legendX = 72;
+          legendRow += 1;
+        }
+        context.beginPath();
+        context.arc(legendX + 10, legendY + legendRow * 48, 9, 0, Math.PI * 2);
+        context.fillStyle = item.color;
+        context.fill();
+        drawText(item.name, legendX + 30, legendY + legendRow * 48, '600 22px "Noto Sans Thai", sans-serif', '#6f6269', itemWidth - 35);
+        legendX += itemWidth;
+      });
+      drawText('ตารางเวรส่วนบุคคล · NurseShift', width / 2, 1850, '500 20px "Noto Sans Thai", sans-serif', '#887981', width - 100, 'center');
+
       const image = await new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error('ไม่สามารถแปลงภาพเป็นไฟล์ PNG ได้'));
-        }, 'image/png');
+        if (typeof canvas.toBlob === 'function') {
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('เบราว์เซอร์แปลงภาพเป็น PNG ไม่สำเร็จ'));
+          }, 'image/png');
+          return;
+        }
+        const dataUrl = canvas.toDataURL('image/png');
+        const [header, encoded] = dataUrl.split(',');
+        const mimeType = header.match(/data:(.*?);base64/)?.[1] || 'image/png';
+        const binary = atob(encoded);
+        const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+        resolve(new Blob([bytes], { type: mimeType }));
       });
-      downloadBlob(image, `nurseshift-calendar-${toIsoDate(calendarMonth).slice(0, 7)}.png`, 'image/png');
+      downloadBlob(image, `nurseshift-calendar-${monthKey}.png`, 'image/png');
       showToast('ดาวน์โหลดภาพตารางเวร 9:16 แล้ว');
     } catch (error) {
       console.error('Calendar image export failed', error);
-      showToast('สร้างภาพตารางเวรไม่สำเร็จ กรุณาลองใหม่');
-    } finally {
-      wallpaper.remove();
+      showToast(error instanceof Error ? `สร้างภาพไม่สำเร็จ: ${error.message}` : 'สร้างภาพตารางเวรไม่สำเร็จ กรุณาลองใหม่');
     }
   });
 }

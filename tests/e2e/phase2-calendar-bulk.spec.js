@@ -24,14 +24,19 @@ async function completeOnboarding(page) {
 test('downloads a phone wallpaper image of the current shift calendar', async ({ page }) => {
   await completeOnboarding(page);
   await page.locator('[data-nav="calendar"]').click();
-  const downloadPromise = page.waitForEvent('download');
-  await page.locator('#download-calendar-image').click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('nurseshift-calendar-2026-10.png');
-  const image = await readFile(await download.path());
-  expect(image.toString('ascii', 1, 4)).toBe('PNG');
-  expect(image.readUInt32BE(16)).toBe(1080);
-  expect(image.readUInt32BE(20)).toBe(1920);
+  for (const disableToBlob of [false, true]) {
+    if (disableToBlob) {
+      await page.evaluate(() => { HTMLCanvasElement.prototype.toBlob = undefined; });
+    }
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#download-calendar-image').click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe('nurseshift-calendar-2026-10.png');
+    const image = await readFile(await download.path());
+    expect(image.toString('ascii', 1, 4)).toBe('PNG');
+    expect(image.readUInt32BE(16)).toBe(1080);
+    expect(image.readUInt32BE(20)).toBe(1920);
+  }
 });
 
 test('adds a shift for one selected day', async ({ page }) => {
