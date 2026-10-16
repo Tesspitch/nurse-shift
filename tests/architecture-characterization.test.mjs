@@ -7,8 +7,9 @@ import { normalizeState } from '../src/service.js';
 import { calculateBotMonthSummary } from '../supabase/functions/_shared/line-bot.js';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
-const [api, webhook, webhookMigration, fixtureText] = await Promise.all([
+const [api, historyRepository, webhook, webhookMigration, fixtureText] = await Promise.all([
   read('../supabase/functions/app-api/index.ts'),
+  read('../supabase/functions/_shared/infrastructure/supabase/history-repository.js'),
   read('../supabase/functions/line-webhook/index.ts'),
   read('../supabase/migrations/202610150005_line_webhook_events.sql'),
   read('./fixtures/payroll-golden.json')
@@ -51,7 +52,7 @@ test('app-api keeps the existing action surface and success envelopes', () => {
 
   const contracts = {
     bootstrap: /\{ data: await getState\(profile\) \}/,
-    'month-history': /\{ data: await getMonthState\(profile, String\(payload\.month \|\| ''\)\) \}/,
+    'month-history': /\{ data: await getMonthHistory\(profile\.id, String\(payload\.month \|\| ''\)\) \}/,
     'list-notification-rules': /\{ data: data \?\? \[\] \}/,
     'upsert-notification-rule': /\{ data: \{ id, scheduledFor: rule\.scheduledFor\.toISOString\(\), mode: 'shadow' \} \}/,
     'cancel-notification-rule': /\{ data: \{ cancelled: Boolean\(cancelled\) \} \}/,
@@ -98,7 +99,7 @@ test('app-api preserves camelCase state responses and snake_case persistence map
     ['offsetMinutes', 'reminder.offset_minutes']
   ];
   for (const [clientKey, databaseExpression] of mappings) {
-    assert.match(api, new RegExp(`${clientKey}: (?:Number\\()?${databaseExpression.replaceAll('.', '\\.')}`));
+    assert.match(`${api}\n${historyRepository}`, new RegExp(`${clientKey}: (?:Number\\()?${databaseExpression.replaceAll('.', '\\.')}`));
   }
   assert.match(api, /replace_user_state_v2/);
   assert.match(api, /p_expected_version: Number\(payload\.version\)/);

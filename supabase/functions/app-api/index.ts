@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 import { nextRunAt, validateNotificationRule } from '../_shared/notification-scheduling.js';
-import { bangkokMonthKey, monthRange, shiftMonthKey } from '../_shared/domain/bangkok-calendar.js';
+import { createGetMonthHistory } from '../_shared/application/get-month-history.js';
+import { createHistoryRepository } from '../_shared/infrastructure/supabase/history-repository.js';
 
 type VerifiedLineUser = { sub: string; name?: string; picture?: string };
 
@@ -21,6 +22,7 @@ const supabase = createClient(
   secretKeys.default ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   { auth: { persistSession: false } }
 );
+const getMonthHistory = createGetMonthHistory({ historyRepository: createHistoryRepository(supabase) });
 
 const validationCodes = new Set([
   'INVALID_STATE', 'INVALID_SETTINGS', 'INVALID_STANDARD_HOURS', 'INVALID_CYCLE_START_DAY',
@@ -180,31 +182,6 @@ async function getState(profile: { id: string; display_name: string; picture_url
   };
 }
 
-function historyMonthRange(monthKey: string) {
-  if (!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(monthKey)) throw new Error('INVALID_HISTORY_MONTH');
-  const current = bangkokMonthKey();
-  if (![shiftMonthKey(current, -2), shiftMonthKey(current, -1), current].includes(monthKey)) throw new Error('INVALID_HISTORY_MONTH');
-  return monthRange(monthKey);
-}
-
-async function getMonthState(profile: { id: string }, monthKey: string) {
-  const range = historyMonthRange(monthKey);
-  const [shiftsResult, specialOtResult, dayOffsResult, itemsResult] = await Promise.all([
-    supabase.from('shifts').select('*').eq('user_id', profile.id).gte('work_date', range.start).lte('work_date', range.end).order('work_date').order('start_time'),
-    supabase.from('special_ot_items').select('*').eq('user_id', profile.id).gte('work_date', range.start).lte('work_date', range.end).order('work_date'),
-    supabase.from('day_offs').select('*').eq('user_id', profile.id).gte('work_date', range.start).lte('work_date', range.end).order('work_date'),
-    supabase.from('financial_items').select('*').eq('user_id', profile.id).gte('work_date', range.start).lte('work_date', range.end).order('work_date')
-  ]);
-  const error = shiftsResult.error || specialOtResult.error || dayOffsResult.error || itemsResult.error;
-  if (error) throw error;
-  return {
-    shifts: shiftsResult.data.map((shift) => ({ id: shift.id, shiftTypeId: shift.shift_type_id, workDate: shift.work_date, startTime: shift.start_time.slice(0, 5), endTime: shift.end_time.slice(0, 5), urgentOtHours: 0, note: shift.note || '' })),
-    specialOtItems: specialOtResult.data.map((item) => ({ id: item.id, workDate: item.work_date, hours: item.hours, note: item.note || '' })),
-    dayOffs: dayOffsResult.data.map((item) => ({ id: item.id, workDate: item.work_date })),
-    financialItems: itemsResult.data.map((item) => ({ id: item.id, kind: item.kind, label: item.label, amount: Number(item.amount), workDate: item.work_date }))
-  };
-}
-
 function isFiniteNumber(value: unknown, min: number, max: number) {
   const number = Number(value);
   return Number.isFinite(number) && number >= min && number <= max;
@@ -337,7 +314,7 @@ Deno.serve(async (request) => {
     const { action, payload = {} } = JSON.parse(rawBody || '{}');
 
     if (action === 'bootstrap') return jsonResponse(request, { data: await getState(profile) });
-    if (action === 'month-history') return jsonResponse(request, { data: await getMonthState(profile, String(payload.month || '')) });
+    if (action === 'month-history') return jsonResponse(request, { data: await getMonthHistory(profile.id, String(payload.month || '')) });
     if (action === 'list-notification-rules') {
       const { data, error } = await supabase.from('notification_rules')
         .select('id, notification_type, schedule_kind, timezone, schedule_config, enabled, generation, created_at, updated_at')

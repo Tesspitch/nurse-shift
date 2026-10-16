@@ -1,5 +1,6 @@
 import { createInitialState } from './seed.js';
-import { calculateMonthlyHistory, isAllowedHistoryMonth } from './history.js';
+import { createGetMonthHistory } from './modules/history/application/get-month-history.js';
+import { CachedHistoryRepository } from './infrastructure/history/cached-history-repository.js';
 
 const STORAGE_KEY = 'cost-nurse-state-v1';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -44,7 +45,8 @@ export function normalizeState(state) {
 class LocalService {
   constructor(profile = null) {
     this.profile = profile;
-    this.monthCache = new Map();
+    this.historyRepository = new CachedHistoryRepository({ loadMonth: async () => null });
+    this.getMonthHistoryUseCase = createGetMonthHistory({ historyRepository: this.historyRepository });
   }
 
   async bootstrap() {
@@ -63,14 +65,17 @@ class LocalService {
   async save(state) {
     state.version = Number(state.version || 0) + 1;
     this.persist(state);
-    this.monthCache.clear();
+    this.historyRepository.clear();
     return clone(state);
   }
 
   async getMonthHistory(monthKey, state) {
-    if (!isAllowedHistoryMonth(monthKey)) throw new ApiError('เลือกดูได้เฉพาะเดือนปัจจุบันและ 2 เดือนก่อนหน้า', 'INVALID_HISTORY_MONTH');
-    if (!this.monthCache.has(monthKey)) this.monthCache.set(monthKey, calculateMonthlyHistory(state, monthKey));
-    return clone(this.monthCache.get(monthKey));
+    try {
+      return await this.getMonthHistoryUseCase({ monthKey, currentState: state });
+    } catch (error) {
+      if (error.code === 'INVALID_HISTORY_MONTH') throw new ApiError(error.message, error.code);
+      throw error;
+    }
   }
 
   async testNotification() {
@@ -88,8 +93,17 @@ class RemoteService {
     this.endpoint = `${baseUrl.replace(/\/$/, '')}/functions/v1/app-api`;
     this.publishableKey = publishableKey;
     this.idToken = idToken;
-    this.monthCache = new Map();
-    this.monthRequests = new Map();
+    this.historyRepository = new CachedHistoryRepository({
+      loadMonth: async (_userId, monthKey) => {
+        try {
+          return await this.call('month-history', { month: monthKey });
+        } catch (error) {
+          if (error.code !== 'UNKNOWN_ACTION') throw error;
+          return null;
+        }
+      }
+    });
+    this.getMonthHistoryUseCase = createGetMonthHistory({ historyRepository: this.historyRepository });
     this.bootstrapRequest = null;
   }
 
@@ -144,29 +158,17 @@ class RemoteService {
     const saved = result?.settings
       ? normalizeState(result)
       : normalizeState({ ...clone(state), version: Number(result?.version ?? state.version + 1) });
-    this.monthCache.clear();
+    this.historyRepository.clear();
     return saved;
   }
 
   async getMonthHistory(monthKey, state) {
-    if (!isAllowedHistoryMonth(monthKey)) throw new ApiError('เลือกดูได้เฉพาะเดือนปัจจุบันและ 2 เดือนก่อนหน้า', 'INVALID_HISTORY_MONTH');
-    if (this.monthCache.has(monthKey)) return clone(this.monthCache.get(monthKey));
-    if (!this.monthRequests.has(monthKey)) {
-      const request = (async () => {
-        let monthState;
-        try {
-          monthState = await this.call('month-history', { month: monthKey });
-        } catch (error) {
-          if (error.code !== 'UNKNOWN_ACTION') throw error;
-          monthState = state;
-        }
-        const history = calculateMonthlyHistory({ ...state, ...monthState }, monthKey);
-        this.monthCache.set(monthKey, history);
-        return history;
-      })().finally(() => this.monthRequests.delete(monthKey));
-      this.monthRequests.set(monthKey, request);
+    try {
+      return await this.getMonthHistoryUseCase({ monthKey, currentState: state });
+    } catch (error) {
+      if (error.code === 'INVALID_HISTORY_MONTH') throw new ApiError(error.message, error.code);
+      throw error;
     }
-    return clone(await this.monthRequests.get(monthKey));
   }
 
   testNotification() {

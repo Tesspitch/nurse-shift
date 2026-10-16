@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const app = await readFile(new URL('../src/app.js', import.meta.url), 'utf8');
 const service = await readFile(new URL('../src/service.js', import.meta.url), 'utf8');
+const historyRepository = await readFile(new URL('../src/infrastructure/history/cached-history-repository.js', import.meta.url), 'utf8');
 const api = await readFile(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const vite = await readFile(new URL('../vite.config.js', import.meta.url), 'utf8');
 const vercel = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
@@ -25,8 +26,9 @@ test('LIFF initialization is shared and active-screen rendering avoids hidden-sc
 
 test('frontend deduplicates overlapping reads and simultaneous state saves', () => {
   assert.match(service, /this\.bootstrapRequest/);
-  assert.match(service, /this\.monthRequests = new Map\(\)/);
-  assert.match(service, /this\.monthRequests\.has\(monthKey\)/);
+  assert.match(service, /CachedHistoryRepository/);
+  assert.match(historyRepository, /this\.requests = new Map\(\)/);
+  assert.match(historyRepository, /this\.requests\.has\(key\)/);
   assert.match(app, /let commitInProgress = false/);
   assert.match(app, /if \(commitInProgress\)/);
   assert.match(app, /finally \{[\s\S]*commitInProgress = false/);
