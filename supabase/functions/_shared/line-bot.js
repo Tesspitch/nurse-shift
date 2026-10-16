@@ -1,3 +1,7 @@
+import { bangkokMonthRange } from './domain/bangkok-calendar.js';
+import { calculatePayrollSummary } from './domain/payroll.js';
+import { workedHoursWithoutOverlap } from './domain/shift-time.js';
+
 export const BOT_ACTIONS = new Set(['next_shift', 'monthly_income', 'ot_summary', 'day_off', 'monthly_shifts', 'help']);
 
 export function parsePostbackAction(data = '') {
@@ -21,58 +25,10 @@ export async function verifyLineSignature(rawBody, signature, channelSecret, sub
   return difference === 0;
 }
 
-export function bangkokMonthRange(now = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
-  const value = (type) => parts.find((part) => part.type === type)?.value;
-  const year = Number(value('year'));
-  const month = Number(value('month'));
-  const start = `${year}-${String(month).padStart(2, '0')}-01`;
-  const end = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-  return { monthKey: start.slice(0, 7), start, end };
-}
-
-function shiftRange(shift) {
-  const start = new Date(`${shift.work_date}T${String(shift.start_time).slice(0, 5)}:00+07:00`).getTime();
-  let end = new Date(`${shift.work_date}T${String(shift.end_time).slice(0, 5)}:00+07:00`).getTime();
-  if (end <= start) end += 86_400_000;
-  return [start, end];
-}
-
-export function workedHoursWithoutOverlap(shifts = []) {
-  const ranges = shifts.map(shiftRange).sort((first, second) => first[0] - second[0]);
-  let minutes = 0;
-  let activeStart = null;
-  let activeEnd = null;
-  for (const [start, end] of ranges) {
-    if (activeStart === null) {
-      activeStart = start;
-      activeEnd = end;
-    } else if (start <= activeEnd) {
-      activeEnd = Math.max(activeEnd, end);
-    } else {
-      minutes += (activeEnd - activeStart) / 60_000;
-      activeStart = start;
-      activeEnd = end;
-    }
-  }
-  if (activeStart !== null) minutes += (activeEnd - activeStart) / 60_000;
-  return Math.floor(minutes / 60);
-}
+export { bangkokMonthRange, workedHoursWithoutOverlap };
 
 export function calculateBotMonthSummary({ settings, shiftTypes = [], shifts = [], specialOtItems = [], dayOffs = [], financialItems = [] }) {
-  const workedHours = workedHoursWithoutOverlap(shifts);
-  const standardHours = Number(settings.standard_hours || 176);
-  const normalOtHours = Math.max(0, workedHours - standardHours);
-  const specialOtHours = specialOtItems.reduce((sum, item) => sum + Math.floor(Number(item.hours || 0)), 0);
-  const types = new Map(shiftTypes.map((type) => [type.id, type]));
-  const shiftIncome = shifts.reduce((sum, shift) => sum + Number(types.get(shift.shift_type_id)?.premium || 0), 0);
-  const normalOtIncome = normalOtHours * Number(settings.ot_rate || 0);
-  const specialOtIncome = specialOtHours * Number(settings.ot_rate || 0);
-  const otherIncome = financialItems.filter((item) => item.kind === 'income').reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const deductions = financialItems.filter((item) => item.kind === 'deduction').reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const gross = Number(settings.salary || 0) + Number(settings.license_allowance || 0) + shiftIncome + normalOtIncome + specialOtIncome + otherIncome;
-  const shiftCounts = Object.fromEntries(shiftTypes.map((type) => [type.id, shifts.filter((shift) => shift.shift_type_id === type.id).length]));
-  return { workedHours, normalOtHours, specialOtHours, totalOtHours: normalOtHours + specialOtHours, shiftIncome, normalOtIncome, specialOtIncome, otIncome: normalOtIncome + specialOtIncome, otherIncome, deductions, gross, net: gross - deductions, shiftCounts, dayOffCount: dayOffs.length };
+  return calculatePayrollSummary({ settings, shiftTypes, shifts, specialOtItems, dayOffs, financialItems });
 }
 
 const money = (value) => `${new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 }).format(Number(value || 0))} บาท`;

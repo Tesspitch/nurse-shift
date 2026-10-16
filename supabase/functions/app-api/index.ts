@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 import { nextRunAt, validateNotificationRule } from '../_shared/notification-scheduling.js';
+import { bangkokMonthKey, monthRange, shiftMonthKey } from '../_shared/domain/bangkok-calendar.js';
 
 type VerifiedLineUser = { sub: string; name?: string; picture?: string };
 
@@ -179,25 +180,11 @@ async function getState(profile: { id: string; display_name: string; picture_url
   };
 }
 
-function bangkokMonthKey() {
-  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
-  return `${parts.find((part) => part.type === 'year')?.value}-${parts.find((part) => part.type === 'month')?.value}`;
-}
-
-function shiftMonthKey(monthKey: string, amount: number) {
-  const [year, month] = monthKey.split('-').map(Number);
-  const shifted = new Date(Date.UTC(year, month - 1 + amount, 1));
-  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}`;
-}
-
 function historyMonthRange(monthKey: string) {
   if (!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(monthKey)) throw new Error('INVALID_HISTORY_MONTH');
   const current = bangkokMonthKey();
   if (![shiftMonthKey(current, -2), shiftMonthKey(current, -1), current].includes(monthKey)) throw new Error('INVALID_HISTORY_MONTH');
-  const next = shiftMonthKey(monthKey, 1);
-  const [nextYear, nextMonth] = next.split('-').map(Number);
-  const end = new Date(Date.UTC(nextYear, nextMonth - 1, 0)).toISOString().slice(0, 10);
-  return { start: `${monthKey}-01`, end };
+  return monthRange(monthKey);
 }
 
 async function getMonthState(profile: { id: string }, monthKey: string) {
