@@ -15,6 +15,10 @@ import { createService } from './service.js';
 import { readNavigationIntent } from './navigation.js';
 import { createBackup, createCsv, reminderLabel, restoreBackup } from './data-transfer.js';
 import { allowedHistoryMonths } from './history.js';
+import { removeShift } from './modules/shifts/application/remove-shift.js';
+import { removeDayOff } from './modules/day-off/application/remove-day-off.js';
+import { createSpecialOtItem, saveSpecialOt } from './modules/special-ot/application/save-special-ot.js';
+import { removeSpecialOt } from './modules/special-ot/application/remove-special-ot.js';
 
 const numberFormat = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 });
 const currencyFormat = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -686,12 +690,12 @@ function bindEvents() {
   $('#selected-shifts').addEventListener('click', async (event) => {
     const shiftButton = event.target.closest('[data-delete-shift]');
     if (shiftButton) {
-      await commit(() => { state.shifts = state.shifts.filter((shift) => shift.id !== shiftButton.dataset.deleteShift); }, 'ลบเวรแล้ว', shiftButton, true);
+      await commit(() => removeShift(state, shiftButton.dataset.deleteShift), 'ลบเวรแล้ว', shiftButton, true);
       return;
     }
     const dayOffButton = event.target.closest('[data-delete-day-off]');
     if (dayOffButton) {
-      await commit(() => { state.dayOffs = state.dayOffs.filter((item) => item.id !== dayOffButton.dataset.deleteDayOff); }, 'ยกเลิกวันหยุดแล้ว', dayOffButton, true);
+      await commit(() => removeDayOff(state, dayOffButton.dataset.deleteDayOff), 'ยกเลิกวันหยุดแล้ว', dayOffButton, true);
       return;
     }
     const editButton = event.target.closest('[data-edit-special-ot]');
@@ -700,7 +704,7 @@ function bindEvents() {
       return;
     }
     const deleteButton = event.target.closest('[data-delete-special-ot]');
-    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว', deleteButton, true);
+    if (deleteButton) await commit(() => removeSpecialOt(state, deleteButton.dataset.deleteSpecialOt), 'ลบ OT พิเศษแล้ว', deleteButton, true);
   });
   $('#financial-items').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-delete-item]');
@@ -715,7 +719,7 @@ function bindEvents() {
       return;
     }
     const deleteButton = event.target.closest('[data-delete-special-ot]');
-    if (deleteButton) await commit(() => { state.specialOtItems = state.specialOtItems.filter((item) => item.id !== deleteButton.dataset.deleteSpecialOt); }, 'ลบ OT พิเศษแล้ว', deleteButton, true);
+    if (deleteButton) await commit(() => removeSpecialOt(state, deleteButton.dataset.deleteSpecialOt), 'ลบ OT พิเศษแล้ว', deleteButton, true);
   });
   $('#reminder-settings').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-delete-reminder]');
@@ -786,23 +790,14 @@ function bindEvents() {
     const form = event.currentTarget;
     const workDate = parseDateInput(form.elements.workDate.value);
     const hours = Number(form.elements.hours.value);
-    if (!workDate) {
-      showToast('กรุณากรอกวันที่ให้ถูกต้อง เช่น 18/10/2569');
+    let item;
+    try {
+      item = createSpecialOtItem({ id: form.elements.id.value, workDate, hours, note: form.elements.note.value });
+    } catch (error) {
+      showToast(error.message);
       return;
     }
-    if (!Number.isInteger(hours) || hours < 1 || hours > 24) {
-      showToast('OT พิเศษต้องเป็นจำนวนเต็ม 1–24 ชั่วโมง');
-      return;
-    }
-    const item = { id: form.elements.id.value || crypto.randomUUID(), workDate, hours, note: form.elements.note.value.trim() };
-    const saved = await commit(() => {
-      // Accounts created before Special OT was introduced may not have this
-      // collection yet. Initialise it here as a final write-path safeguard.
-      if (!Array.isArray(state.specialOtItems)) state.specialOtItems = [];
-      const index = state.specialOtItems.findIndex((entry) => entry.id === item.id);
-      if (index >= 0) state.specialOtItems[index] = item;
-      else state.specialOtItems.push(item);
-    }, form.elements.id.value ? 'แก้ไข OT พิเศษแล้ว' : 'บันทึก OT พิเศษแล้ว', event.submitter || form.querySelector('[type="submit"]'));
+    const saved = await commit(() => saveSpecialOt(state, item), form.elements.id.value ? 'แก้ไข OT พิเศษแล้ว' : 'บันทึก OT พิเศษแล้ว', event.submitter || form.querySelector('[type="submit"]'));
     if (saved) {
       selectedDate = workDate;
       calendarMonth = new Date(fromIsoDate(workDate).getFullYear(), fromIsoDate(workDate).getMonth(), 1);
