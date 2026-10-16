@@ -100,6 +100,15 @@ test('links the quick-info rich menu before replying to the exact trigger messag
   }]]);
 });
 
+test('silently completes rich-menu navigation postbacks', async () => {
+  const { calls, processor } = createHarness();
+  await processor.processEvent(event({ postback: { data: 'action=switch_quick_info' } }));
+  assert.deepEqual(calls, [
+    ['claim', 'event-1'],
+    ['complete', 'event-1', 'completed']
+  ]);
+});
+
 test('keeps salary details private in group chats', async () => {
   const { calls, processor } = createHarness();
   await processor.processEvent(event({

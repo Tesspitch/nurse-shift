@@ -2,6 +2,7 @@ import {
   bangkokMonthRange,
   calculateBotMonthSummary,
   canShowActionInSource,
+  isRichMenuNavigationPostback,
   parsePostbackAction
 } from '../line-bot.js';
 import { createFlexMessage } from '../presentation/line-flex-messages.js';
@@ -88,6 +89,10 @@ export function createLineWebhookProcessor({
         return;
       }
       if (event.type !== 'postback') {
+        await webhookEventRepository.complete(eventId, 'completed');
+        return;
+      }
+      if (isRichMenuNavigationPostback(event.postback?.data)) {
         await webhookEventRepository.complete(eventId, 'completed');
         return;
       }

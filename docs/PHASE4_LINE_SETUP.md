@@ -57,7 +57,8 @@
 | รายการ | ไฟล์ | สถานะ |
 |---|---|---|
 | ภาพ Rich Menu หน้า 2 | `assets/line-rich-menu-page-2.png` | พร้อมอัปโหลด, 2500×1686, 363,627 bytes |
-| ภาพ Rich Menu หน้าแรก v2 | `assets/line-rich-menu.jpg` | เพิ่มแถบสลับไปหน้า 2 และอัปโหลดแล้ว |
+| ภาพ Rich Menu หน้าแรก v3 | `assets/line-rich-menu.jpg` | แถบสลับเต็มความกว้างด้านบน, 2500×1686, พร้อมอัปโหลดแต่ยังไม่ deploy |
+| Source ภาพหน้าแรก v3 | `assets/line-rich-menu.svg` | พื้นที่ภาพตรงกับ bounds ใน `docs/line-rich-menu.json` |
 | Source ภาพ | `assets/line-rich-menu-page-2.svg` | พร้อมแก้ไขภายหลัง |
 | Rich Menu areas/actions | `docs/line-rich-menu-page-2.json` | พร้อม, มี 6 postbacks และ 1 ปุ่มกลับหน้าหลัก |
 | LINE Webhook | `supabase/functions/line-webhook/index.ts` | พร้อมสำหรับ controlled deployment |
@@ -142,13 +143,15 @@ LINE_LIFF_URL=https://liff.line.me/2012030979-CQQzGFWo
 
 ### Step 4.4 — Rich Menu Navigation
 
+หมายเหตุ: Production ปัจจุบันยังใช้หน้าแรก v2 ตาม Deployment Record ด้านบน ส่วนไฟล์ใน Repository เป็น candidate v3 และห้ามเปลี่ยน Default Rich Menu จนกว่าจะได้รับอนุญาต deploy
+
 1. สร้าง Rich Menu หน้า 2 จาก `docs/line-rich-menu-page-2.json` และอัปโหลดภาพหน้า 2
-2. สร้าง Rich Menu หน้าแรก v2 จาก `docs/line-rich-menu.json` และอัปโหลด `assets/line-rich-menu.jpg`
+2. สร้าง Rich Menu หน้าแรก v3 จาก `docs/line-rich-menu.json` และอัปโหลด `assets/line-rich-menu.jpg`
 3. เก็บ Rich Menu ID หน้า 2 แล้วตั้ง `LINE_RICH_MENU_PAGE_2_ID`
 4. สร้างหรือ update alias แบบ idempotent:
-   - `nurseshift-main` → Rich Menu หน้าแรก v2
+   - `nurseshift-main` → Rich Menu หน้าแรก v3
    - `nurseshift-quick-info` → Rich Menu หน้า 2
-5. ตั้งหน้าแรก v2 เป็น Default Rich Menu และเก็บหน้าแรกเดิมไว้สำหรับ rollback
+5. ตั้งหน้าแรก v3 เป็น Default Rich Menu และเก็บหน้าแรก v2 ไว้สำหรับ rollback
 
 ผลลัพธ์: ผู้ใช้แตะสลับหน้า 1 ↔ หน้า 2 ได้ โดย 4 actions เดิมยังทำงาน
 

@@ -9,6 +9,11 @@ export function parsePostbackAction(data = '') {
   return BOT_ACTIONS.has(action) ? action : null;
 }
 
+export function isRichMenuNavigationPostback(data = '') {
+  const action = new URLSearchParams(data).get('action') || '';
+  return action === 'switch_quick_info' || action === 'switch_main';
+}
+
 export function canShowActionInSource(action, sourceType) {
   return action !== 'monthly_income' || sourceType === 'user';
 }

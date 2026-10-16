@@ -26,53 +26,53 @@
   </defs>
 
   <rect width="2500" height="1686" fill="#FFF8FA"/>
-  <rect x="34" y="34" width="1432" height="1618" rx="62" fill="url(#main)" filter="url(#shadow)"/>
-  <rect x="34" y="34" width="1432" height="1618" rx="62" fill="url(#dots)"/>
+  <rect x="34" y="274" width="1432" height="1378" rx="62" fill="url(#main)" filter="url(#shadow)"/>
+  <rect x="34" y="274" width="1432" height="1378" rx="62" fill="url(#dots)"/>
 
-  <rect x="300" y="88" width="900" height="148" rx="74" fill="#FFFFFF" opacity="0.78"/>
-  <circle cx="406" cy="162" r="45" fill="#A3416A"/>
-  <path d="M387 162h38M412 145l17 17-17 17" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="492" y="181" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="48" font-weight="700" fill="#5B3143">ข้อมูลด่วน · เมนูเพิ่มเติม</text>
+  <rect x="34" y="34" width="2432" height="206" rx="62" fill="#F8E6EF" filter="url(#shadow)"/>
+  <circle cx="773" cy="137" r="50" fill="#A3416A"/>
+  <path d="M751 137h44M781 118l19 19-19 19" fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="858" y="158" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="54" font-weight="700" fill="#5B3143">ข้อมูลด่วน · เมนูเพิ่มเติม</text>
 
-  <circle cx="750" cy="478" r="168" fill="#FFFFFF" opacity="0.62"/>
-  <circle cx="750" cy="478" r="119" fill="#FFFFFF" opacity="0.92"/>
-  <g transform="translate(662 390)" fill="none" stroke="#A3416A" stroke-width="27" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="750" cy="570" r="168" fill="#FFFFFF" opacity="0.62"/>
+  <circle cx="750" cy="570" r="119" fill="#FFFFFF" opacity="0.92"/>
+  <g transform="translate(662 482)" fill="none" stroke="#A3416A" stroke-width="27" stroke-linecap="round" stroke-linejoin="round">
     <path d="M88 16v144M16 88h144"/>
     <path d="M8 8h160v160H8z" opacity="0.18"/>
   </g>
 
-  <text x="750" y="760" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="98" font-weight="700" fill="#4B2B39">NurseShift</text>
-  <text x="750" y="880" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="58" font-weight="600" fill="#775160">ตารางเวรและรายได้ของฉัน</text>
-  <text x="750" y="963" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="38" font-weight="400" fill="#846B76">ดูภาพรวมของรอบปัจจุบันได้ในที่เดียว</text>
+  <text x="750" y="830" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="98" font-weight="700" fill="#4B2B39">NurseShift</text>
+  <text x="750" y="930" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="58" font-weight="600" fill="#775160">ตารางเวรและรายได้ของฉัน</text>
+  <text x="750" y="1013" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="38" font-weight="400" fill="#846B76">ดูภาพรวมของรอบปัจจุบันได้ในที่เดียว</text>
   <rect x="397" y="1134" width="706" height="164" rx="82" fill="#A3416A"/>
   <text x="750" y="1239" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="56" font-weight="700" fill="#FFFFFF">เปิดภาพรวม</text>
   <text x="750" y="1422" text-anchor="middle" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="32" font-weight="600" letter-spacing="2" fill="#8D345B">แตะเพื่อเข้าสู่ระบบ</text>
 
-  <rect x="1500" y="34" width="966" height="519" rx="62" fill="url(#add)" filter="url(#shadow)"/>
-  <rect x="1500" y="584" width="966" height="518" rx="62" fill="url(#calendar)" filter="url(#shadow)"/>
-  <rect x="1500" y="1134" width="966" height="518" rx="62" fill="url(#settings)" filter="url(#shadow)"/>
+  <rect x="1500" y="274" width="966" height="429" rx="62" fill="url(#add)" filter="url(#shadow)"/>
+  <rect x="1500" y="749" width="966" height="429" rx="62" fill="url(#calendar)" filter="url(#shadow)"/>
+  <rect x="1500" y="1224" width="966" height="428" rx="62" fill="url(#settings)" filter="url(#shadow)"/>
 
-  <g transform="translate(1606 173)" fill="none" stroke="#A3416A" stroke-width="24" stroke-linecap="round">
+  <g transform="translate(1606 370)" fill="none" stroke="#A3416A" stroke-width="24" stroke-linecap="round">
     <circle cx="118" cy="118" r="112" fill="#FFFFFF" opacity="0.74" stroke="none"/>
     <path d="M118 61v114M61 118h114"/>
   </g>
-  <text x="1905" y="266" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="70" font-weight="700" fill="#432533">เพิ่มเวร</text>
-  <text x="1905" y="343" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="35" font-weight="400" fill="#7C626D">บันทึกเวรของวันนี้</text>
+  <text x="1905" y="463" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="70" font-weight="700" fill="#432533">เพิ่มเวร</text>
+  <text x="1905" y="540" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="35" font-weight="400" fill="#7C626D">บันทึกเวรของวันนี้</text>
 
-  <g transform="translate(1606 723)" fill="none" stroke="#80629A" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(1606 845)" fill="none" stroke="#80629A" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="118" cy="118" r="112" fill="#FFFFFF" opacity="0.74" stroke="none"/>
     <rect x="51" y="61" width="134" height="126" rx="17"/>
     <path d="M51 102h134M84 42v38M152 42v38"/>
     <path d="M84 134h1M118 134h1M152 134h1M84 164h1M118 164h1M152 164h1" stroke-width="18"/>
   </g>
-  <text x="1905" y="816" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="70" font-weight="700" fill="#432533">ตารางเวร</text>
-  <text x="1905" y="893" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="35" font-weight="400" fill="#71657C">ดูปฏิทินเวรทั้งหมด</text>
+  <text x="1905" y="938" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="70" font-weight="700" fill="#432533">ตารางเวร</text>
+  <text x="1905" y="1015" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="35" font-weight="400" fill="#71657C">ดูปฏิทินเวรทั้งหมด</text>
 
-  <g transform="translate(1606 1273)" fill="none" stroke="#A45C62" stroke-width="21" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(1606 1320)" fill="none" stroke="#A45C62" stroke-width="21" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="118" cy="118" r="112" fill="#FFFFFF" opacity="0.74" stroke="none"/>
     <circle cx="118" cy="118" r="35"/>
     <path d="M118 51v19M118 166v19M51 118h19M166 118h19M71 71l14 14M151 151l14 14M165 71l-14 14M85 151l-14 14"/>
   </g>
-  <text x="1905" y="1366" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="70" font-weight="700" fill="#432533">ตั้งค่า</text>
-  <text x="1905" y="1443" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="35" font-weight="400" fill="#796568">ปรับอัตราและรอบเงินเดือน</text>
+  <text x="1905" y="1413" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="70" font-weight="700" fill="#432533">ตั้งค่า</text>
+  <text x="1905" y="1490" font-family="Leelawadee UI, Tahoma, sans-serif" font-size="35" font-weight="400" fill="#796568">ปรับอัตราและรอบเงินเดือน</text>
 </svg>

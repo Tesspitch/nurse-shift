@@ -6,6 +6,7 @@ import {
   BOT_ACTIONS,
   calculateBotMonthSummary,
   canShowActionInSource,
+  isRichMenuNavigationPostback,
   parsePostbackAction,
   verifyLineSignature
 } from '../supabase/functions/_shared/line-bot.js';
@@ -16,6 +17,13 @@ test('accepts only the six supported LINE postback actions', () => {
   assert.equal(parsePostbackAction('action=monthly_income&source=menu'), 'monthly_income');
   assert.equal(parsePostbackAction('action=unknown'), null);
   assert.equal(BOT_ACTIONS.size, 6);
+});
+
+test('recognizes rich menu navigation postbacks without treating them as bot commands', () => {
+  assert.equal(isRichMenuNavigationPostback('action=switch_quick_info'), true);
+  assert.equal(isRichMenuNavigationPostback('action=switch_main'), true);
+  assert.equal(isRichMenuNavigationPostback('action=next_shift'), false);
+  assert.equal(parsePostbackAction('action=switch_quick_info'), null);
 });
 
 test('verifies LINE signature against the unmodified raw body', async () => {
@@ -76,7 +84,10 @@ test('page configs contain reciprocal switches and page 2 contains six postbacks
   const page2 = JSON.parse(await readFile(new URL('../docs/line-rich-menu-page-2.json', import.meta.url)));
   assert.equal(page1.areas.length, 5);
   assert.equal(page1.areas.filter((area) => area.action.type === 'richmenuswitch').length, 1);
-  assert.equal(page1.areas.find((area) => area.action.type === 'richmenuswitch').action.richMenuAliasId, 'nurseshift-quick-info');
+  const page1Switch = page1.areas.find((area) => area.action.type === 'richmenuswitch');
+  assert.equal(page1Switch.action.richMenuAliasId, 'nurseshift-quick-info');
+  assert.deepEqual(page1Switch.bounds, { x: 0, y: 0, width: 2500, height: 260 });
+  assert.deepEqual(page1.areas.slice(1).map((area) => area.bounds.y), [260, 260, 735, 1210]);
   assert.equal(page2.name, 'NurseShift Quick Info');
   assert.equal(page2.areas.filter((area) => area.action.type === 'postback').length, 6);
   assert.equal(page2.areas.filter((area) => area.action.type === 'richmenuswitch').length, 1);
