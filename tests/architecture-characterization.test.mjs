@@ -7,13 +7,15 @@ import { normalizeState } from '../src/service.js';
 import { calculateBotMonthSummary } from '../supabase/functions/_shared/line-bot.js';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
-const [api, apiActions, apiHttp, userStateRepository, historyRepository, webhook, webhookMigration, fixtureText] = await Promise.all([
+const [api, apiActions, apiHttp, userStateRepository, historyRepository, webhook, webhookProcessor, webhookEvents, webhookMigration, fixtureText] = await Promise.all([
   read('../supabase/functions/app-api/index.ts'),
   read('../supabase/functions/_shared/application/app-api-actions.js'),
   read('../supabase/functions/_shared/http/app-api-http.js'),
   read('../supabase/functions/_shared/infrastructure/supabase/user-state-repository.js'),
   read('../supabase/functions/_shared/infrastructure/supabase/history-repository.js'),
   read('../supabase/functions/line-webhook/index.ts'),
+  read('../supabase/functions/_shared/application/line-webhook-processor.js'),
+  read('../supabase/functions/_shared/infrastructure/supabase/webhook-event-repository.js'),
   read('../supabase/migrations/202610150005_line_webhook_events.sql'),
   read('./fixtures/payroll-golden.json')
 ]);
@@ -158,21 +160,23 @@ test('legacy state normalization remains compatible without changing persisted r
 });
 
 test('LINE webhook claims events before side effects and ignores duplicate claims', () => {
-  const processBlock = webhook.slice(webhook.indexOf('async function processEvent'), webhook.indexOf('Deno.serve'));
-  assert.match(processBlock, /!\(await claimEvent\(eventId\)\)\) return/);
-  assert.ok(processBlock.indexOf('claimEvent(eventId)') < processBlock.indexOf('linkRichMenu('));
-  assert.ok(processBlock.indexOf('claimEvent(eventId)') < processBlock.indexOf('await reply('));
+  assert.match(webhookProcessor, /if \(!eventId \|\| !event\.replyToken \|\| !\(await webhookEventRepository\.claim\(eventId\)\)\) return/);
+  assert.ok(webhookProcessor.indexOf('webhookEventRepository.claim(eventId)') < webhookProcessor.indexOf('lineMessagingGateway.linkRichMenu('));
+  assert.ok(webhookProcessor.indexOf('webhookEventRepository.claim(eventId)') < webhookProcessor.indexOf('lineMessagingGateway.reply('));
+  assert.match(webhookEvents, /claim_line_webhook_event/);
+  assert.match(webhookEvents, /line_webhook_events/);
   assert.match(webhookMigration, /on conflict \(event_id\) do update/);
   assert.match(webhookMigration, /status = 'failed'/);
   assert.match(webhookMigration, /attempts < 5/);
 });
 
 test('LINE webhook preserves privacy and unlinked-user responses', () => {
-  assert.match(webhook, /ข้อมูลรายได้เป็นข้อมูลส่วนตัว/);
-  assert.match(webhook, /ยังไม่พบบัญชี NurseShift กรุณาเปิดแอปและตั้งค่าให้เรียบร้อยก่อน/);
-  assert.match(webhook, /label: 'เปิด NurseShift', uri: liffUrl/);
-  assert.match(webhook, /event\.source\?\.userId/);
-  assert.match(webhook, /if \(!lineUserId\)[\s\S]+completeEvent\(eventId, 'completed'\)/);
+  assert.match(webhookProcessor, /ข้อมูลรายได้เป็นข้อมูลส่วนตัว/);
+  assert.match(webhookProcessor, /ยังไม่พบบัญชี NurseShift กรุณาเปิดแอปและตั้งค่าให้เรียบร้อยก่อน/);
+  assert.match(webhookProcessor, /label: 'เปิด NurseShift', uri: liffUrl/);
+  assert.match(webhookProcessor, /event\.source\?\.userId/);
+  assert.match(webhookProcessor, /if \(!lineUserId\)[\s\S]+webhookEventRepository\.complete\(eventId, 'completed'\)/);
+  assert.ok(webhook.indexOf('verifyLineSignature(rawBody') < webhook.indexOf('JSON.parse(rawBody)'));
 });
 
 test('frontend form actions remain connected to one commit path', async () => {

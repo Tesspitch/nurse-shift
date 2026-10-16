@@ -6,10 +6,10 @@ import {
   BOT_ACTIONS,
   calculateBotMonthSummary,
   canShowActionInSource,
-  createFlexMessage,
   parsePostbackAction,
   verifyLineSignature
 } from '../supabase/functions/_shared/line-bot.js';
+import { createFlexMessage } from '../supabase/functions/_shared/presentation/line-flex-messages.js';
 
 test('accepts only the six supported LINE postback actions', () => {
   assert.equal(parsePostbackAction('action=next_shift'), 'next_shift');

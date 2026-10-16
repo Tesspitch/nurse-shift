@@ -1,8 +1,8 @@
 # NurseShift — Clean Architecture Audit & Incremental Refactoring Plan
 
 วันที่ตรวจสอบ: 16 ตุลาคม 2026  
-ขอบเขตเอกสาร: Stage 1 Architecture Audit และ Stage 2 Architecture Proposal เท่านั้น  
-สถานะ: **ยังไม่มีการ Refactor Application Code, Database, Edge Function หรือ Production Configuration**
+ขอบเขตเอกสาร: Stage 1 Architecture Audit, Stage 2 Architecture Proposal และบันทึกผลการดำเนินงาน
+สถานะ: **ดำเนินการ Refactor ถึง Step 5 — LINE Bot แล้ว**
 
 ## 1. Executive Summary
 
@@ -461,7 +461,7 @@ Historical Data is the recommended first complete vertical slice after canonical
 
 ## 8. Incremental Migration Steps
 
-This section is a proposal only. No step has been executed.
+Steps 0–4 have been completed. Step 5 is completed as recorded below. Step 6 and later remain unstarted.
 
 ### Step 0 — Freeze observable contracts
 
@@ -521,12 +521,24 @@ Target: `index.ts` becomes a composition root and thin controller, ideally under
 
 ### Step 5 — LINE Bot
 
+สถานะ: **เสร็จแล้ว**
+
 1. Keep raw-body signature verification before JSON parsing.
 2. Extract event claim/complete operations to `WebhookEventRepository`.
 3. Extract authorized user queries to a user-data repository.
 4. Extract LINE reply/rich-menu operations to `LineMessagingGateway`.
 5. Keep Flex rendering in Presentation and privacy policy in Domain/Application.
 6. Preserve all action names, aliases, LIFF URLs and current reply text unless separately approved.
+
+ผลการดำเนินงาน:
+
+- `line-webhook/index.ts` เป็น composition root และ HTTP controller แบบบาง โดยตรวจ signature จาก raw body ก่อน parse JSON เหมือนเดิม
+- Event claim/complete อยู่ใน `WebhookEventRepository`; RPC และ schema เดิมไม่เปลี่ยน
+- การอ่าน profile, ข้อมูลเดือน และเวรถัดไปอยู่ใน `LineUserDataRepository` โดย query ทุกข้อมูลด้วย `user_id` ของ profile ที่ผูกกับ LINE user
+- การ reply และ link rich menu อยู่ใน `LineMessagingGateway`
+- การประสาน event, privacy check และ error handling อยู่ใน `LineWebhookProcessor`; Flex rendering แยกอยู่ใน Presentation
+- เพิ่ม application tests สำหรับ idempotency, การจัดการ event, ความเป็นส่วนตัว, บัญชีที่ยังไม่ผูก และ error completion
+- คง action, rich-menu trigger, LIFF URL, reply text, HTTP response และ database RPC contract เดิม; ไม่มี migration หรือ production configuration เปลี่ยน
 
 ### Step 6 — Notifications
 
@@ -630,13 +642,7 @@ The estimate excludes:
 
 ## 12. Recommended Approval Sequence
 
-If implementation is approved later, begin with:
-
-1. Step 0 characterization contracts
-2. Step 1 canonical shift/payroll domain
-3. Step 2 Historical Data vertical slice
-
-Stop and report after each step. Do not begin the next module without approval. This sequence proves the architecture using a read-only feature before touching authentication, writes, LINE delivery or scheduler behavior.
+Steps 0–5 have been implemented incrementally. Step 6 — Notifications — is the next unstarted module and remains outside the current change.
 
 ## 13. Audit Completion Checklist
 
@@ -653,4 +659,4 @@ Stop and report after each step. Do not begin the next module without approval. 
 - [x] Module extraction priority provided
 - [x] Incremental migration and testing strategy provided
 - [x] Scope/complexity estimated
-- [x] No Application Code, Database, Edge Function, Cron or Production Configuration changed
+- [x] Step 5 LINE Bot boundaries extracted and verified without database migration or production configuration changes
