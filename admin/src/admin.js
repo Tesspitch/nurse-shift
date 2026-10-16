@@ -37,13 +37,32 @@ function renderFeedback() {
   $('#feedback-list').innerHTML = feedback.length ? feedback.map((item) => `<article class="feedback-card"><div class="feedback-meta"><span>${escapeHtml(item.profiles?.display_name || item.user_id)} · ${labels[item.category] || item.category}</span><span>${formatDate(item.created_at)}</span></div><h3>${escapeHtml(statusLabels[item.status] || item.status)}</h3><p>${escapeHtml(item.message)}</p><div class="feedback-controls"><select data-feedback-status="${item.id}">${Object.entries(statusLabels).map(([value, label]) => `<option value="${value}" ${value === item.status ? 'selected' : ''}>${label}</option>`).join('')}</select><input data-feedback-note="${item.id}" value="${escapeHtml(item.admin_note || '')}" placeholder="หมายเหตุผู้ดูแล"><button class="secondary" data-feedback-save="${item.id}">บันทึก</button></div></article>`).join('') : '<div class="empty">ยังไม่มีข้อเสนอแนะ</div>';
 }
 async function loadFeedback() { feedback = await adminCall('list-feedback'); renderFeedback(); }
+function renderShiftCalendar(shifts, month) {
+  const [year, monthNumber] = month.split('-').map(Number);
+  const first = new Date(Date.UTC(year, monthNumber - 1, 1));
+  const days = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  const offset = (first.getUTCDay() + 6) % 7;
+  const byDate = new Map();
+  shifts.forEach((shift) => { const list = byDate.get(shift.work_date) || []; list.push(shift); byDate.set(shift.work_date, list); });
+  const cells = [];
+  for (let index = 0; index < offset; index += 1) cells.push('<div class="calendar-day is-empty"></div>');
+  for (let day = 1; day <= days; day += 1) {
+    const date = `${year}-${String(monthNumber).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const entries = (byDate.get(date) || []).map((shift) => `<span class="calendar-shift">${escapeHtml(shift.shift_types?.name || shift.shift_type_id)} <small>${escapeHtml(String(shift.start_time).slice(0, 5))}–${escapeHtml(String(shift.end_time).slice(0, 5))}</small></span>`).join('');
+    cells.push(`<div class="calendar-day"><b>${day}</b>${entries || '<span class="calendar-empty">—</span>'}</div>`);
+  }
+  return `<div class="calendar-toolbar"><button class="secondary" data-calendar-prev>‹</button><strong>${new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' }).format(new Date(Date.UTC(year, monthNumber - 1, 1)))}</strong><button class="secondary" data-calendar-next>›</button></div><div class="calendar-weekdays">${['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'].map((day) => `<span>${day}</span>`).join('')}</div><div class="shift-calendar">${cells.join('')}</div>`;
+}
 async function openUser(userId) {
   const data = await adminCall('get-user', { id: userId });
   const profile = data.profile;
-  $('#user-detail').innerHTML = `<p class="eyebrow">User detail</p><h2>${escapeHtml(profile.display_name || 'ไม่ระบุชื่อ')}</h2><p class="muted">${escapeHtml(profile.line_user_id || profile.id)}</p><div class="detail-grid"><div class="detail-stat"><span>เวรทั้งหมด</span><b>${data.shifts.length}</b></div><div class="detail-stat"><span>ข้อเสนอแนะ</span><b>${data.feedback.length}</b></div><div class="detail-stat"><span>สร้างบัญชี</span><b>${formatDate(profile.created_at)}</b></div></div><div class="control-form"><select id="user-status"><option value="active">ใช้งาน</option><option value="blocked">ระงับ</option></select><input id="user-note" maxlength="500" placeholder="หมายเหตุผู้ดูแล"><button class="primary" id="save-user-status">บันทึกสถานะ</button></div><h3>เวรล่าสุด</h3><div class="shift-list">${data.shifts.slice(0, 30).map((shift) => `<div class="shift-row"><span>${escapeHtml(shift.work_date)} · ${escapeHtml(shift.shift_types?.name || shift.shift_type_id)}</span><span>${escapeHtml(String(shift.start_time).slice(0, 5))}–${escapeHtml(String(shift.end_time).slice(0, 5))}</span></div>`).join('') || '<div class="empty">ยังไม่มีเวร</div>'}</div>`;
+  const currentMonth = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit' }).format(new Date());
+  let calendarMonth = currentMonth;
+  $('#user-detail').innerHTML = `<p class="eyebrow">User detail</p><h2>${escapeHtml(profile.display_name || 'ไม่ระบุชื่อ')}</h2><p class="muted">${escapeHtml(profile.line_user_id || profile.id)}</p><div class="detail-grid"><div class="detail-stat"><span>เวรทั้งหมด</span><b>${data.shifts.length}</b></div><div class="detail-stat"><span>ข้อเสนอแนะ</span><b>${data.feedback.length}</b></div><div class="detail-stat"><span>สร้างบัญชี</span><b>${formatDate(profile.created_at)}</b></div></div><div class="control-form"><select id="user-status"><option value="active">ใช้งาน</option><option value="blocked">ระงับ</option></select><input id="user-note" maxlength="500" placeholder="หมายเหตุผู้ดูแล"><button class="primary" id="save-user-status">บันทึกสถานะ</button></div><h3>ปฏิทินเวร</h3><div id="user-shift-calendar">${renderShiftCalendar(data.shifts, currentMonth)}</div>`;
   $('#user-status').value = users.find((item) => item.id === userId)?.status || 'active';
   $('#user-note').value = users.find((item) => item.id === userId)?.adminNote || '';
   $('#save-user-status').addEventListener('click', async () => { await adminCall('set-user-status', { id: userId, status: $('#user-status').value, note: $('#user-note').value }); $('#user-dialog').close(); await loadUsers(); });
+  $('#user-shift-calendar').addEventListener('click', (event) => { const direction = event.target.closest('[data-calendar-prev]') ? -1 : event.target.closest('[data-calendar-next]') ? 1 : 0; if (!direction) return; const next = new Date(`${calendarMonth}-01T00:00:00Z`); next.setUTCMonth(next.getUTCMonth() + direction); calendarMonth = next.toISOString().slice(0, 7); $('#user-shift-calendar').innerHTML = renderShiftCalendar(data.shifts, calendarMonth); });
   $('#user-dialog').showModal();
 }
 function showApp() { $('#admin-login').hidden = true; $('#admin-app').hidden = false; Promise.all([loadUsers(), loadFeedback()]).catch((error) => setError(error.message)); }
