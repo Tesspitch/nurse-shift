@@ -1,0 +1,64 @@
+{
+  "anchorDate": "2026-10-15T12:00:00+07:00",
+  "state": {
+    "version": 7,
+    "profile": {
+      "displayName": "พยาบาลทดสอบ",
+      "pictureUrl": ""
+    },
+    "settings": {
+      "onboardingComplete": true,
+      "salary": 25000,
+      "licenseAllowance": 1500,
+      "otRate": 120,
+      "standardHours": 16,
+      "cycleStartDay": 1,
+      "uncertaintyBuffer": 500,
+      "confirmedCycle": null,
+      "notificationsEnabled": true,
+      "expirationNotificationsEnabled": true
+    },
+    "shiftTypes": [
+      { "id": "morning", "name": "เวรเช้า", "startTime": "08:00", "endTime": "16:00", "premium": 0, "color": "#F59E0B" },
+      { "id": "evening", "name": "เวรบ่าย", "startTime": "16:00", "endTime": "00:00", "premium": 200, "color": "#8B5CF6" },
+      { "id": "night", "name": "เวรดึก", "startTime": "00:00", "endTime": "08:00", "premium": 300, "color": "#2563EB" }
+    ],
+    "shifts": [
+      { "id": "00000000-0000-4000-8000-000000000001", "shiftTypeId": "morning", "workDate": "2026-10-01", "startTime": "08:00", "endTime": "16:00", "urgentOtHours": 0, "note": "" },
+      { "id": "00000000-0000-4000-8000-000000000002", "shiftTypeId": "evening", "workDate": "2026-10-01", "startTime": "12:00", "endTime": "20:00", "urgentOtHours": 0, "note": "เวรซ้อน" },
+      { "id": "00000000-0000-4000-8000-000000000003", "shiftTypeId": "night", "workDate": "2026-10-02", "startTime": "23:00", "endTime": "07:00", "urgentOtHours": 0, "note": "ข้ามวัน" }
+    ],
+    "specialOtItems": [
+      { "id": "00000000-0000-4000-8000-000000000004", "workDate": "2026-10-02", "hours": 2, "note": "เคสด่วนหลังลงเวร" }
+    ],
+    "dayOffs": [
+      { "id": "00000000-0000-4000-8000-000000000005", "workDate": "2026-10-03" }
+    ],
+    "financialItems": [
+      { "id": "00000000-0000-4000-8000-000000000006", "kind": "income", "label": "รายได้อื่น", "amount": 400, "workDate": "2026-10-04" },
+      { "id": "00000000-0000-4000-8000-000000000007", "kind": "deduction", "label": "ภาษี", "amount": 600, "workDate": "2026-10-04" }
+    ],
+    "reminders": [
+      { "id": "one-day", "offsetMinutes": 1440, "enabled": true }
+    ]
+  },
+  "expected": {
+    "workedHours": 20,
+    "normalOtHours": 4,
+    "specialOtHours": 2,
+    "shiftPremium": 500,
+    "otherIncome": 400,
+    "deductions": 600,
+    "otIncome": 720,
+    "gross": 28120,
+    "net": 27520,
+    "estimateLow": 27020,
+    "estimateHigh": 28020,
+    "dayOffCount": 1,
+    "shiftCounts": {
+      "morning": 1,
+      "evening": 1,
+      "night": 1
+    }
+  }
+}
