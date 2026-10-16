@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fff8fa">
+  <title>NurseShift Admin</title>
+  <link rel="stylesheet" href="/src/admin.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <section class="admin-login" id="admin-login">
+      <div class="brand-mark">N</div>
+      <p class="eyebrow">NurseShift</p>
+      <h1>พื้นที่ผู้ดูแล</h1>
+      <p>เข้าสู่ระบบด้วยบัญชี Supabase Auth ที่ได้รับสิทธิ์ผู้ดูแล</p>
+      <form id="login-form">
+        <label>อีเมล<input type="email" name="email" required autocomplete="username"></label>
+        <label>รหัสผ่าน<input type="password" name="password" required autocomplete="current-password"></label>
+        <button class="primary" type="submit">เข้าสู่ระบบ</button>
+      </form>
+      <p class="error" id="login-error" hidden></p>
+    </section>
+
+    <section class="admin-app" id="admin-app" hidden>
+      <header class="admin-header">
+        <div><p class="eyebrow">NurseShift Admin</p><h1>ภาพรวมระบบ</h1></div>
+        <button class="secondary" id="logout">ออกจากระบบ</button>
+      </header>
+      <div class="admin-tabs"><button class="tab is-active" data-tab="users">ผู้ใช้งาน</button><button class="tab" data-tab="feedback">ข้อเสนอแนะ</button></div>
+      <section class="admin-panel" data-panel="users">
+        <div class="panel-heading"><div><p class="eyebrow">Accounts</p><h2>ผู้ใช้งาน</h2></div><input id="user-search" class="search" type="search" placeholder="ค้นหาชื่อหรือ LINE ID"></div>
+        <div class="table-wrap"><table><thead><tr><th>ผู้ใช้</th><th>เวร</th><th>สถานะ</th><th>อัปเดตล่าสุด</th><th></th></tr></thead><tbody id="users-body"></tbody></table></div>
+        <div class="empty" id="users-empty" hidden>ไม่พบผู้ใช้งาน</div>
+      </section>
+      <section class="admin-panel" data-panel="feedback" hidden>
+        <div class="panel-heading"><div><p class="eyebrow">Inbox</p><h2>ข้อเสนอแนะ</h2></div><button class="secondary" id="refresh-feedback">รีเฟรช</button></div>
+        <div id="feedback-list" class="feedback-list"></div>
+      </section>
+      <p class="admin-error" id="admin-error" hidden></p>
+    </section>
+  </main>
+  <dialog id="user-dialog"><button class="dialog-close" id="close-user-dialog">×</button><div id="user-detail"></div></dialog>
+  <script type="module" src="/src/admin.js"></script>
+</body>
+</html>

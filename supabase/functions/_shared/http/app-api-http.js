@@ -27,6 +27,7 @@ export function createHttpResponses(allowedOrigins) {
   const error = (request, cause, requestId) => {
     const message = cause instanceof Error ? cause.message : 'INTERNAL_ERROR';
     if (message === 'ORIGIN_NOT_ALLOWED') return json(request, { error: message }, 403);
+    if (message === 'USER_BLOCKED') return json(request, { error: message }, 403);
     if (message.startsWith('LINE_')) return json(request, { error: message }, 401);
     if (message === 'STATE_VERSION_CONFLICT') return json(request, { error: message }, 409);
     if (message === 'NOTIFICATION_RATE_LIMITED') return json(request, { error: message }, 429);

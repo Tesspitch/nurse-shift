@@ -6,6 +6,7 @@ import { createLineIdentityGateway } from '../_shared/infrastructure/line/line-i
 import { createLinePushGateway } from '../_shared/infrastructure/line/line-push-gateway.js';
 import { createHistoryRepository } from '../_shared/infrastructure/supabase/history-repository.js';
 import { createNotificationRuleRepository } from '../_shared/infrastructure/supabase/notification-rule-repository.js';
+import { createFeedbackRepository } from '../_shared/infrastructure/supabase/feedback-repository.js';
 import { createUserStateRepository } from '../_shared/infrastructure/supabase/user-state-repository.js';
 
 const DEFAULT_ORIGINS = ['https://costnurse.vercel.app', 'http://localhost:5173', 'http://127.0.0.1:5173'];
@@ -25,6 +26,7 @@ const handleAction = createAppApiActions({
   userStateRepository,
   historyUseCase: createGetMonthHistory({ historyRepository: createHistoryRepository(supabase) }),
   notificationRuleRepository: createNotificationRuleRepository(supabase),
+  feedbackRepository: createFeedbackRepository(supabase),
   linePushGateway: createLinePushGateway({ channelAccessToken: Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') })
 });
 
@@ -40,6 +42,13 @@ Deno.serve(async (request) => {
     if (Number(request.headers.get('content-length') || 0) > 1_000_000) throw new Error('PAYLOAD_TOO_LARGE');
     const lineUser = await identityGateway.authenticate(request);
     const profile = await userStateRepository.ensureProfile(lineUser);
+    const { data: userControl, error: userControlError } = await supabase
+      .from('user_admin_controls')
+      .select('status')
+      .eq('user_id', profile.id)
+      .maybeSingle();
+    if (userControlError) throw userControlError;
+    if (userControl?.status === 'blocked') throw new Error('USER_BLOCKED');
     const rawBody = await request.text();
     if (rawBody.length > 1_000_000) throw new Error('PAYLOAD_TOO_LARGE');
     const { action, payload = {} } = JSON.parse(rawBody || '{}');

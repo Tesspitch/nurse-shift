@@ -162,6 +162,7 @@
           <button class="settings-menu-item" type="button" data-settings-open="shift-types"><span class="icon-bubble lavender"><svg><use href="#i-clock"/></svg></span><span><b>ประเภทเวร</b><small>เวลาเริ่ม สิ้นสุด และค่าเพิ่ม</small></span><svg><use href="#i-right"/></svg></button>
           <button class="settings-menu-item" type="button" data-settings-open="notifications"><span class="icon-bubble"><svg><use href="#i-bell"/></svg></span><span><b>การแจ้งเตือน LINE</b><small id="settings-notification-summary">เปิดใช้งาน</small></span><svg><use href="#i-right"/></svg></button>
           <button class="settings-menu-item" type="button" data-settings-open="privacy"><span class="icon-bubble lavender"><svg><use href="#i-shield"/></svg></span><span><b>ข้อมูลและความเป็นส่วนตัว</b><small>ส่งออก สำรอง นำเข้า หรือลบข้อมูล</small></span><svg><use href="#i-right"/></svg></button>
+          <button class="settings-menu-item" type="button" data-settings-open="feedback"><span class="icon-bubble peach"><svg><use href="#i-send"/></svg></span><span><b>ข้อเสนอแนะ</b><small>ช่วยปรับปรุง NurseShift ให้ดีขึ้น</small></span><svg><use href="#i-right"/></svg></button>
         </div>
         <form class="settings-form" id="settings-form" hidden>
           <header class="settings-detail-head"><button class="icon-button" id="settings-back" type="button" aria-label="กลับไปเมนูตั้งค่า"><svg><use href="#i-left"/></svg></button><div><p class="eyebrow" id="settings-detail-eyebrow">ตั้งค่า</p><h2 id="settings-detail-title">รายละเอียด</h2></div></header>
@@ -208,6 +209,15 @@
               <input id="backup-file" type="file" accept="application/json,.json" hidden>
             </div>
             <button class="btn btn-danger full" id="delete-account" type="button"><svg><use href="#i-trash"/></svg>ลบข้อมูลทั้งหมด</button>
+          </section>
+          <section class="settings-card settings-section" data-settings-section="feedback">
+            <div class="section-heading"><div><p class="eyebrow">ส่งถึงทีมงาน</p><h2>ข้อเสนอแนะ</h2></div><span class="icon-bubble peach"><svg><use href="#i-send"/></svg></span></div>
+            <p class="privacy-note">บอกสิ่งที่อยากให้ปรับปรุงหรือแจ้งปัญหาได้โดยตรง ข้อมูลนี้จะใช้เพื่อพัฒนาแอปเท่านั้น</p>
+            <div class="form-stack feedback-form">
+              <label class="field"><span>ประเภท</span><select id="feedback-category"><option value="suggestion">ข้อเสนอแนะ</option><option value="bug">แจ้งปัญหา</option><option value="question">คำถาม</option><option value="other">อื่น ๆ</option></select></label>
+              <label class="field"><span>รายละเอียด</span><textarea id="feedback-message" rows="6" maxlength="2000" placeholder="เขียนข้อเสนอแนะของคุณ"></textarea></label>
+              <button class="btn btn-primary full" id="submit-feedback" type="button"><svg><use href="#i-send"/></svg>ส่งข้อเสนอแนะ</button>
+            </div>
           </section>
           <button class="btn btn-primary full" id="save-settings" type="submit">บันทึกการตั้งค่า</button>
         </form>

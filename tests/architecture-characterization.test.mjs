@@ -52,6 +52,7 @@ test('app-api keeps the existing action surface and success envelopes', () => {
     'cancel-notification-rule',
     'replace-state',
     'test-notification',
+    'submit-feedback',
     'delete-account'
   ]);
 
@@ -63,6 +64,7 @@ test('app-api keeps the existing action surface and success envelopes', () => {
     'cancel-notification-rule': /return \{ cancelled: await notificationRuleRepository\.cancel/,
     'replace-state': /return \{ version: await userStateRepository\.replace/,
     'test-notification': /return \{ sent: true \}/,
+    'submit-feedback': /feedbackRepository\.create\(profile\.id/,
     'delete-account': /return \{ deleted: true \}/
   };
   for (const [action, pattern] of Object.entries(contracts)) {

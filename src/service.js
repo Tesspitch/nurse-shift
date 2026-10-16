@@ -82,6 +82,14 @@ class LocalService {
     throw new ApiError('ปุ่มทดสอบใช้ได้เมื่อเชื่อมต่อ LINE และ Supabase', 'LOCAL_MODE');
   }
 
+  async submitFeedback(payload) {
+    const key = 'cost-nurse-feedback-v1';
+    const items = JSON.parse(localStorage.getItem(key) || '[]');
+    items.push({ ...payload, createdAt: new Date().toISOString() });
+    localStorage.setItem(key, JSON.stringify(items.slice(-20)));
+    return { saved: true, local: true };
+  }
+
   async deleteAccount() {
     localStorage.removeItem(STORAGE_KEY);
     return { deleted: true };
@@ -173,6 +181,10 @@ class RemoteService {
 
   testNotification() {
     return this.call('test-notification');
+  }
+
+  submitFeedback(payload) {
+    return this.call('submit-feedback', payload);
   }
 
   deleteAccount() {

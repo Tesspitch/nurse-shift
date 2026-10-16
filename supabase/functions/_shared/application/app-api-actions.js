@@ -17,7 +17,7 @@ function validatedNotificationRule(payload) {
   return { id, notificationType, scheduleKind, timezone, scheduleConfig, scheduledFor };
 }
 
-export function createAppApiActions({ userStateRepository, historyUseCase, notificationRuleRepository, linePushGateway }) {
+export function createAppApiActions({ userStateRepository, historyUseCase, notificationRuleRepository, linePushGateway, feedbackRepository }) {
   return async function handleAction({ action, payload, profile, lineUser }) {
     if (action === 'bootstrap') return userStateRepository.getState(profile);
     if (action === 'month-history') return historyUseCase(profile.id, String(payload.month || ''));
@@ -40,6 +40,17 @@ export function createAppApiActions({ userStateRepository, historyUseCase, notif
       if (!(await notificationRuleRepository.claimTest(profile.id))) throw new Error('NOTIFICATION_RATE_LIMITED');
       await linePushGateway.sendTest(lineUser.sub);
       return { sent: true };
+    }
+    if (action === 'submit-feedback') {
+      if (!feedbackRepository) throw new Error('FEEDBACK_NOT_CONFIGURED');
+      const category = String(payload.category || 'suggestion');
+      const message = String(payload.message || '').trim();
+      if (!['suggestion', 'bug', 'question', 'other'].includes(category) || message.length < 1 || message.length > 2000) {
+        const error = new Error('INVALID_FEEDBACK');
+        error.status = 400;
+        throw error;
+      }
+      return feedbackRepository.create(profile.id, { category, message });
     }
     if (action === 'delete-account') {
       await userStateRepository.delete(profile, lineUser.sub);

@@ -673,7 +673,8 @@ const settingsMeta = {
   income: ['รายได้หลัก', 'อัตราคำนวณ'],
   'shift-types': ['ตารางเวร', 'ประเภทเวร'],
   notifications: ['การแจ้งเตือน', 'แจ้งเตือนผ่าน LINE'],
-  privacy: ['ข้อมูลของคุณ', 'ข้อมูลและความเป็นส่วนตัว']
+  privacy: ['ข้อมูลของคุณ', 'ข้อมูลและความเป็นส่วนตัว'],
+  feedback: ['ส่งถึงทีมงาน', 'ข้อเสนอแนะ']
 };
 
 function applySettingsView() {
@@ -889,6 +890,25 @@ function bindEvents() {
   $('#profile-badge').addEventListener('click', () => openSettingsSection('profile'));
   $$('[data-settings-open]').forEach((button) => button.addEventListener('click', () => openSettingsSection(button.dataset.settingsOpen)));
   $('#settings-back').addEventListener('click', showSettingsMenu);
+  $('#submit-feedback').addEventListener('click', async (event) => {
+    const message = $('#feedback-message').value.trim();
+    if (!message) {
+      showToast('กรุณาเขียนข้อเสนอแนะก่อนส่ง');
+      return;
+    }
+    const sent = await withButtonLoading(event.currentTarget, 'กำลังส่ง…', async () => {
+      try {
+        await dataService.submitFeedback({ category: $('#feedback-category').value, message });
+        $('#feedback-message').value = '';
+        showToast('ส่งข้อเสนอแนะแล้ว ขอบคุณครับ');
+        return true;
+      } catch (error) {
+        showToast(error.message || 'ส่งข้อเสนอแนะไม่สำเร็จ');
+        return false;
+      }
+    });
+    return sent;
+  });
   $$('[data-action="open-shift"]').forEach((button) => button.addEventListener('click', () => {
     showScreen('calendar');
     openShiftSheet(selectedDate || todayIso);
