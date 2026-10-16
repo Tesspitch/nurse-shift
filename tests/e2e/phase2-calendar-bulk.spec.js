@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 async function completeOnboarding(page) {
@@ -19,6 +20,62 @@ async function completeOnboarding(page) {
   await form.locator('[name="cycleStartDay"]').fill('25');
   await form.getByRole('button', { name: 'เริ่มใช้งาน' }).click();
 }
+
+test('downloads a phone wallpaper image of the current shift calendar', async ({ page }) => {
+  await completeOnboarding(page);
+  await page.locator('[data-nav="calendar"]').click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#download-calendar-image').click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('nurseshift-calendar-2026-10.png');
+  const image = await readFile(await download.path());
+  expect(image.toString('ascii', 1, 4)).toBe('PNG');
+  expect(image.readUInt32BE(16)).toBe(1080);
+  expect(image.readUInt32BE(20)).toBe(1920);
+});
+
+test('adds a shift for one selected day', async ({ page }) => {
+  await completeOnboarding(page);
+  await page.locator('[data-nav="calendar"]').click();
+  await page.locator('[data-action="open-single-shift"]').click();
+
+  const selectedDate = page.locator('#bulk-calendar-grid [data-bulk-date="2026-10-15"]');
+  await expect(selectedDate).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('[data-bulk-type="evening"]').click();
+  await expect(selectedDate).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#bulk-calendar-grid [data-bulk-date="2026-10-16"]').click();
+  await expect(selectedDate).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#bulk-calendar-grid [data-bulk-date="2026-10-16"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#bulk-save').click();
+  await expect(page.locator('#shift-sheet')).toBeHidden();
+
+  await page.locator('#calendar-grid [data-date="2026-10-16"]').click();
+  await expect(page.locator('#selected-shifts')).toContainText('เวรบ่าย');
+  await page.locator('#calendar-grid [data-date="2026-10-15"]').click();
+  await expect(page.locator('#selected-shifts')).toContainText('วันนี้ยังไม่มีรายการ');
+});
+
+test('selects existing shifts by type and marks them for removal', async ({ page }) => {
+  await completeOnboarding(page);
+  await page.locator('[data-nav="calendar"]').click();
+  await page.locator('.calendar-primary-actions [data-action="open-shift"]').click();
+  await page.locator('[data-bulk-type="evening"]').click();
+  await page.locator('[data-bulk-date="2026-10-01"]').click();
+  await page.locator('#bulk-save').click();
+  await expect(page.locator('#shift-sheet')).toBeHidden();
+
+  await page.locator('.calendar-primary-actions [data-action="open-shift"]').click();
+  await page.locator('[data-bulk-type="evening"]').click();
+  const existingEvening = page.locator('#bulk-calendar-grid [data-bulk-date="2026-10-01"]');
+  await expect(existingEvening).toHaveClass(/has-active-existing-shift/);
+  await expect(existingEvening.locator('.day-labels')).toContainText('บ่าย');
+  await existingEvening.click();
+  await expect(existingEvening).toHaveClass(/is-marked-for-removal/);
+  await expect(page.locator('#bulk-preview')).toContainText('ลบเวรบ่าย');
+  await page.locator('#bulk-save').click();
+  await expect(page.locator('#shift-sheet')).toBeHidden();
+  await expect(page.locator('#selected-shifts')).toContainText('วันนี้ยังไม่มีรายการ');
+});
 
 test('calendar details, bulk shifts and day off work on mobile', async ({ page }) => {
   await completeOnboarding(page);
@@ -57,11 +114,18 @@ test('calendar details, bulk shifts and day off work on mobile', async ({ page }
   await expect(page.locator('#bulk-calendar-grid [data-bulk-date="2026-10-01"] .day-labels')).toContainText('เช้า');
   await expect(page.locator('#bulk-calendar-grid [data-bulk-date="2026-10-04"] .day-labels')).toContainText('หยุด');
   await page.locator('[data-bulk-type="morning"]').click();
-  await page.locator('[data-bulk-date="2026-10-01"]').click();
-  await expect(page.locator('#bulk-preview')).toContainText('ข้ามรายการซ้ำ');
-  await expect(page.locator('#bulk-save')).toBeDisabled();
-  await page.locator('#shift-sheet [data-close-sheet]').click();
+  const existingMorning = page.locator('#bulk-calendar-grid [data-bulk-date="2026-10-01"]');
+  await expect(existingMorning).toHaveClass(/has-active-existing-shift/);
+  await expect(existingMorning).not.toHaveAttribute('aria-pressed', 'true');
+  await existingMorning.click();
+  await expect(existingMorning).toHaveClass(/is-marked-for-removal/);
+  await expect(page.locator('#bulk-preview')).toContainText('ลบเวรเช้า');
+  await page.locator('#bulk-save').click();
+  await expect(page.locator('#shift-sheet')).toBeHidden();
+  await page.locator('#calendar-grid [data-date="2026-10-01"]').click();
+  await expect(page.locator('#selected-shifts')).toContainText('วันนี้ยังไม่มีรายการ');
 
+  await page.locator('#calendar-grid [data-date="2026-10-04"]').click();
   await page.locator('#selected-shifts [data-delete-day-off]').click();
   await expect(page.locator('#selected-shifts')).toContainText('วันนี้ยังไม่มีรายการ');
 

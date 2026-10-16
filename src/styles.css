@@ -65,6 +65,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .section-block { margin-top: 24px; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 11px; }
 .section-heading h2 { margin: 2px 0 0; font-size: 18px; line-height: 1.3; }
+.section-heading .text-button { display: flex; align-items: center; gap: 4px; font-size: 11px; white-space: nowrap; }
+.section-heading .text-button svg { width: 16px; height: 16px; }
 .text-button { min-height: 44px; padding: 0 2px; border: 0; color: var(--pink-700); background: transparent; font-size: 13px; font-weight: 700; }
 .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .quick-card { min-height: 125px; padding: 13px 9px; border: 1px solid rgba(232,221,226,.9); border-radius: 18px; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(91,50,68,.05); text-align: left; transition: transform .18s ease, border-color .18s ease; }
@@ -127,6 +129,26 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .legend { display: flex; flex-wrap: wrap; gap: 7px 12px; margin: 11px 2px 0; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-600); font-size: 10px; }
 .legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--dot-color); }
+.calendar-image-button { margin-top: 12px; }
+.calendar-image-button svg { width: 16px; }
+.schedule-wallpaper { position: fixed; top: 0; left: -10000px; display: flex; width: 360px; height: 640px; flex-direction: column; padding: 18px 16px 14px; overflow: hidden; color: #282226; background: radial-gradient(ellipse at top right, #fce4ed, transparent 45%), linear-gradient(160deg, #fff9fb, #f5eff8); font-family: 'Noto Sans Thai', 'Leelawadee UI', Tahoma, sans-serif; }
+.wallpaper-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.wallpaper-eyebrow { margin: 0 0 2px; color: #a3416a; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.wallpaper-header h1 { margin: 0; font-size: 23px; line-height: 1.25; }
+.wallpaper-summary { flex: 0 0 auto; padding: 6px 9px; border: 1px solid #f1bfd2; border-radius: 999px; color: #8d345b; background: rgba(255,255,255,.78); font-size: 9px; font-weight: 700; white-space: nowrap; }
+.wallpaper-calendar-card { display: flex; min-height: 0; flex: 1; flex-direction: column; margin-top: 12px; padding: 8px 5px 5px; border: 1px solid rgba(232,221,226,.9); border-radius: 18px; background: rgba(255,255,255,.86); box-shadow: 0 8px 24px rgba(91,50,68,.06); }
+.wallpaper-weekdays, .wallpaper-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.wallpaper-weekdays { flex: 0 0 25px; align-items: center; color: #887981; font-size: 8px; font-weight: 800; text-align: center; }
+.wallpaper-calendar-grid { min-height: 0; flex: 1; grid-template-rows: repeat(6, minmax(0, 1fr)); }
+.wallpaper-day { min-width: 0; padding: 3px 2px; border-top: 1px solid #f2e9ed; text-align: center; }
+.wallpaper-day.is-outside { opacity: .42; }
+.wallpaper-day-number { display: grid; width: 22px; height: 22px; margin: 0 auto 2px; place-items: center; border-radius: 50%; font-size: 10px; font-weight: 700; }
+.wallpaper-day.is-today .wallpaper-day-number { color: white; background: #a3416a; }
+.wallpaper-day-label { display: block; overflow: hidden; margin-top: 2px; padding: 1px 2px; border-radius: 4px; color: var(--wallpaper-type-color); background: color-mix(in srgb, var(--wallpaper-type-color) 12%, white); font-size: 7px; font-weight: 700; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.wallpaper-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 11px; margin: 11px 0 0; }
+.wallpaper-legend span { display: inline-flex; align-items: center; gap: 4px; color: #6f6269; font-size: 8px; white-space: nowrap; }
+.wallpaper-legend i { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--wallpaper-type-color); }
+.wallpaper-footer { margin: 8px 0 0; color: #887981; font-size: 7px; text-align: center; }
 .history-entry { display: grid; width: 100%; min-height: 70px; grid-template-columns: 42px minmax(0, 1fr) 20px; align-items: center; gap: 11px; margin-top: 13px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 18px; color: var(--ink-800); background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(246,239,255,.92)); box-shadow: var(--shadow); text-align: left; }
 .history-entry > span:nth-child(2) { display: grid; min-width: 0; gap: 2px; }
 .history-entry b { font-size: 13px; }
@@ -327,11 +349,15 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .bulk-calendar-grid .day-labels { display: grid; }
 .bulk-calendar-grid .day-labels span { padding-inline: 1px; font-size: 6px; }
 .bulk-calendar-grid .calendar-day.is-bulk-selected .day-number { color: white; background: var(--selection-color, var(--pink-700)); box-shadow: 0 3px 10px color-mix(in srgb, var(--selection-color, var(--pink-700)) 28%, transparent); }
+.bulk-calendar-grid .calendar-day.has-active-existing-shift .day-number { color: var(--selection-color, var(--pink-700)); background: color-mix(in srgb, var(--selection-color, var(--pink-700)) 13%, white); }
+.bulk-calendar-grid .calendar-day.is-marked-for-removal .day-number { color: white; background: var(--danger); box-shadow: 0 3px 10px rgba(180,59,76,.25); }
+.bulk-calendar-grid .day-labels .is-marked-for-removal { color: var(--danger); background: #fde8ec; text-decoration: line-through; }
 .bulk-calendar-grid .calendar-day.has-other-selection::after { position: absolute; right: 4px; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--other-selection-color, var(--pink-500)); content: ''; }
 .bulk-hint { display: block; margin-top: 7px; color: var(--ink-600); line-height: 1.5; }
 .bulk-preview { display: grid; gap: 7px; min-height: 52px; padding: 11px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
 .bulk-preview-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; }
 .bulk-preview-row span { color: var(--ink-600); }
+.bulk-preview-row.bulk-removal-row b { color: var(--danger); }
 .bulk-preview-warning { padding-top: 7px; border-top: 1px solid #edd2ae; color: var(--warning); font-size: 10px; line-height: 1.5; }
 .day-off-item { background: #f2fbf5; }
 .inline-warning { display: flex; gap: 10px; padding: 12px; border: 1px solid #edd2ae; border-radius: 13px; color: var(--warning); background: #fff8ed; }

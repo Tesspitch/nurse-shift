@@ -19,6 +19,33 @@ test('builds several shifts in one batch and skips existing duplicates', () => {
   assert.equal(plan.duplicates.length, 1);
 });
 
+test('removes marked shifts in a batch while adding newly selected shifts', () => {
+  const state = createInitialState();
+  state.shifts.push({
+    id: 'existing-evening',
+    shiftTypeId: 'evening',
+    workDate: '2026-10-01',
+    startTime: '23:00',
+    endTime: '07:00',
+    urgentOtHours: 0,
+    note: ''
+  });
+  state.specialOtItems.push({ id: 'special-ot', workDate: '2026-10-01', hours: 2, note: 'คงรายการนี้ไว้' });
+  const plan = buildBulkPlan(
+    state,
+    selections([['night', ['2026-10-01']]]),
+    () => 'new-night',
+    selections([['evening', ['2026-10-01']]])
+  );
+
+  assert.deepEqual(plan.shiftRemovals.map((shift) => shift.id), ['existing-evening']);
+  assert.equal(plan.shifts.length, 1);
+  assert.equal(plan.overlaps.length, 0);
+  applyBulkPlan(state, plan);
+  assert.deepEqual(state.shifts.map((shift) => shift.id), ['new-night']);
+  assert.equal(state.specialOtItems.length, 1);
+});
+
 test('day off contributes no hours, OT, premium or salary deduction', () => {
   const state = createInitialState();
   Object.assign(state.settings, { salary: 20000, standardHours: 176, otRate: 100 });
