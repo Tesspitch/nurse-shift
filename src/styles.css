@@ -131,6 +131,13 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--dot-color); }
 .calendar-image-button { margin-top: 12px; }
 .calendar-image-button svg { width: 16px; }
+.calendar-image-sheet { display: grid; gap: 11px; }
+.calendar-image-sheet[hidden] { display: none; }
+.calendar-image-sheet .sheet-head { margin-bottom: 0; }
+.calendar-image-instructions { margin: 0; color: var(--ink-600); font-size: 12px; line-height: 1.6; }
+.calendar-image-preview { display: block; width: 100%; max-height: min(52dvh, 620px); border: 1px solid var(--line); border-radius: 12px; background: #fff9fb; object-fit: contain; -webkit-touch-callout: default; user-select: none; }
+.calendar-image-actions { display: grid; gap: 8px; }
+.calendar-image-file-link { display: flex; align-items: center; text-decoration: none; }
 .history-entry { display: grid; width: 100%; min-height: 70px; grid-template-columns: 42px minmax(0, 1fr) 20px; align-items: center; gap: 11px; margin-top: 13px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 18px; color: var(--ink-800); background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(246,239,255,.92)); box-shadow: var(--shadow); text-align: left; }
 .history-entry > span:nth-child(2) { display: grid; min-width: 0; gap: 2px; }
 .history-entry b { font-size: 13px; }
@@ -235,8 +242,9 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   min-inline-size: 0;
   max-inline-size: 100%;
   appearance: none;
+  text-align: center;
 }
-.shift-type-setting input[type="time"]::-webkit-date-and-time-value { min-width: 0; text-align: center; }
+.shift-type-setting input[type="time"]::-webkit-date-and-time-value { display: block; width: 100%; min-width: 100%; margin: 0; padding: 0; text-align: center; }
 .shift-type-setting input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
 .type-name { display: flex; align-items: center; gap: 6px; align-self: center; font-size: 12px; font-weight: 700; }
 .type-name i { width: 8px; height: 8px; border-radius: 50%; background: var(--type-color); }

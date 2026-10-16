@@ -287,6 +287,16 @@
     </form>
   </section>
 
+  <section class="bottom-sheet calendar-image-sheet" id="calendar-image-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="calendar-image-title">
+    <div class="sheet-handle"></div>
+    <header class="sheet-head"><div><p class="eyebrow">บันทึกลงมือถือ</p><h2 id="calendar-image-title">ภาพตารางเวร</h2></div><button class="icon-button" data-close-sheet aria-label="ปิด"><svg><use href="#i-close"/></svg></button></header>
+    <p class="calendar-image-instructions">แตะ “แชร์ / บันทึกลงแกลเลอรี่” แล้วเลือก “บันทึกรูปภาพ” หรือกดค้างที่รูปด้านล่างแล้วเลือกบันทึกรูปภาพ</p>
+    <img class="calendar-image-preview" id="calendar-image-preview" alt="ภาพตารางเวรสำหรับบันทึกลงแกลเลอรี่">
+    <div class="calendar-image-actions">
+      <button class="btn btn-primary full" id="share-calendar-image" type="button"><svg><use href="#i-download"/></svg>แชร์ / บันทึกลงแกลเลอรี่</button>
+      <a class="btn btn-secondary full calendar-image-file-link" id="calendar-image-download">ดาวน์โหลดไฟล์ (อาจอยู่ใน Files/Downloads)</a>
+    </div>
+  </section>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <article class="print-slip" id="printable-slip">

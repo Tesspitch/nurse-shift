@@ -24,19 +24,59 @@ async function completeOnboarding(page) {
 test('downloads a phone wallpaper image of the current shift calendar', async ({ page }) => {
   await completeOnboarding(page);
   await page.locator('[data-nav="calendar"]').click();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false });
+  });
   for (const disableToBlob of [false, true]) {
     if (disableToBlob) {
       await page.evaluate(() => { HTMLCanvasElement.prototype.toBlob = undefined; });
     }
-    const downloadPromise = page.waitForEvent('download');
     await page.locator('#download-calendar-image').click();
+    await expect(page.locator('#calendar-image-sheet')).toBeVisible();
+    const preview = page.locator('#calendar-image-preview');
+    await expect.poll(() => preview.evaluate((image) => [image.naturalWidth, image.naturalHeight])).toEqual([1080, 1920]);
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#calendar-image-download').click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe('nurseshift-calendar-2026-10.png');
     const image = await readFile(await download.path());
     expect(image.toString('ascii', 1, 4)).toBe('PNG');
     expect(image.readUInt32BE(16)).toBe(1080);
     expect(image.readUInt32BE(20)).toBe(1920);
+    await page.locator('#calendar-image-sheet [data-close-sheet]').click();
   }
+});
+
+test('offers the native mobile share sheet so the user can save the image to Photos', async ({ page }) => {
+  await completeOnboarding(page);
+  await page.locator('[data-nav="calendar"]').click();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: ({ files }) => files?.[0]?.type === 'image/png' });
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async ({ files }) => {
+        window.sharedCalendarFile = { name: files[0].name, type: files[0].type };
+      }
+    });
+  });
+
+  await page.locator('#download-calendar-image').click();
+  await expect.poll(() => page.evaluate(() => window.sharedCalendarFile)).toEqual({
+    name: 'nurseshift-calendar-2026-10.png',
+    type: 'image/png'
+  });
+  await expect(page.locator('#calendar-image-sheet')).toBeHidden();
+  await expect(page.locator('#toast')).toContainText('บันทึกรูปภาพ');
+});
+
+test('centers shift-type time values in LINE mobile browser layouts', async ({ page }) => {
+  await completeOnboarding(page);
+  await page.locator('[data-nav="settings"]').click();
+  await page.locator('[data-settings-open="shift-types"]').click();
+  const startTime = page.locator('.shift-type-setting input[type="time"]').first();
+  await expect(startTime).toHaveValue('08:00');
+  expect(await startTime.evaluate((input) => getComputedStyle(input).textAlign)).toBe('center');
+  expect(await startTime.evaluate((input) => getComputedStyle(input, '::-webkit-date-and-time-value').textAlign)).toBe('center');
 });
 
 test('adds a shift for one selected day', async ({ page }) => {

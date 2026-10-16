@@ -32,6 +32,8 @@ let state;
 let dataService;
 let serviceMode = 'local';
 let toastTimer;
+let calendarImageUrl = null;
+let calendarImageFile = null;
 let pendingNavigation = null;
 let lineFriendship = null;
 let settingsPanel = null;
@@ -396,6 +398,29 @@ function downloadBlob(content, filename, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function showCalendarImagePreview(file, message = 'กดค้างที่รูป แล้วเลือก “บันทึกรูปภาพ” เพื่อเก็บไว้ในแกลเลอรี่') {
+  if (calendarImageUrl) URL.revokeObjectURL(calendarImageUrl);
+  calendarImageFile = file;
+  calendarImageUrl = URL.createObjectURL(file);
+  $('#calendar-image-preview').src = calendarImageUrl;
+  $('#calendar-image-download').href = calendarImageUrl;
+  $('#calendar-image-download').download = file.name;
+  openSheet($('#calendar-image-sheet'));
+  showToast(message);
+}
+
+async function shareCalendarImage(file) {
+  if (!navigator.share || !navigator.canShare?.({ files: [file] })) return false;
+  try {
+    await navigator.share({ files: [file], title: 'ตารางเวร NurseShift' });
+    showToast('แชร์รูปแล้ว · เลือก “บันทึกรูปภาพ” ในเมนูเพื่อเก็บไว้ในแกลเลอรี่');
+  } catch (error) {
+    if (error?.name === 'AbortError') return false;
+    throw error;
+  }
+  return true;
+}
+
 async function downloadPdf(button) {
   await withButtonLoading(button, 'กำลังสร้าง PDF…', async () => {
     const slip = $('#printable-slip');
@@ -600,11 +625,16 @@ async function downloadCalendarImage(button) {
         const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
         resolve(new Blob([bytes], { type: mimeType }));
       });
-      downloadBlob(image, `nurseshift-calendar-${monthKey}.png`, 'image/png');
-      showToast('ดาวน์โหลดภาพตารางเวร 9:16 แล้ว');
+      const file = new File([image], `nurseshift-calendar-${monthKey}.png`, { type: 'image/png' });
+      if (await shareCalendarImage(file)) return;
+      showCalendarImagePreview(file);
     } catch (error) {
       console.error('Calendar image export failed', error);
-      showToast(error instanceof Error ? `สร้างภาพไม่สำเร็จ: ${error.message}` : 'สร้างภาพตารางเวรไม่สำเร็จ กรุณาลองใหม่');
+      if (calendarImageFile) {
+        showCalendarImagePreview(calendarImageFile, 'เปิดเมนูแชร์ไม่สำเร็จ · กดค้างที่รูปเพื่อบันทึกลงแกลเลอรี่');
+      } else {
+        showToast(error instanceof Error ? `สร้างภาพไม่สำเร็จ: ${error.message}` : 'สร้างภาพตารางเวรไม่สำเร็จ กรุณาลองใหม่');
+      }
     }
   });
 }
@@ -711,6 +741,13 @@ function closeSheets() {
   $('#modal-backdrop').hidden = true;
   $$('.bottom-sheet').forEach((sheet) => { sheet.hidden = true; });
   document.body.style.overflow = '';
+  if (calendarImageUrl) {
+    URL.revokeObjectURL(calendarImageUrl);
+    calendarImageUrl = null;
+    calendarImageFile = null;
+    $('#calendar-image-preview').removeAttribute('src');
+    $('#calendar-image-download').removeAttribute('href');
+  }
 }
 
 function openShiftSheet(date = selectedDate, mode = 'multiple') {
@@ -863,6 +900,16 @@ function bindEvents() {
   $$('[data-action="open-finance"]').forEach((button) => button.addEventListener('click', openFinanceSheet));
   $$('[data-close-sheet]').forEach((button) => button.addEventListener('click', closeSheets));
   $('#modal-backdrop').addEventListener('click', closeSheets);
+  $('#share-calendar-image').addEventListener('click', async () => {
+    if (!calendarImageFile) return;
+    try {
+      const shared = await shareCalendarImage(calendarImageFile);
+      if (!shared) showToast('กดค้างที่รูป แล้วเลือก “บันทึกรูปภาพ” เพื่อเก็บไว้ในแกลเลอรี่');
+    } catch (error) {
+      console.error('Calendar image sharing failed', error);
+      showToast('เปิดเมนูแชร์ไม่สำเร็จ · กดค้างที่รูปเพื่อบันทึกลงแกลเลอรี่');
+    }
+  });
 
   $('#previous-month').addEventListener('click', () => { calendarMonth = shiftMonth(calendarMonth, -1); renderCalendar(); });
   $('#next-month').addEventListener('click', () => { calendarMonth = shiftMonth(calendarMonth, 1); renderCalendar(); });
